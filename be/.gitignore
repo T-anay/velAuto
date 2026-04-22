@@ -30,6 +30,13 @@ buildNumber.properties
 *.sublime-workspace
 *.sublime-project
 
+# JetBrains / IntelliJ specific files to ignore
+# Ignore the entire .idea folder (workspace, caches, local history)
+.idea/**
+# Keep only shared IntelliJ settings if you want (uncomment if needed)
+# !.idea/inspectionProfiles
+# !.idea/codeStyles
+
 # Build Files
 *.class
 *.jar
@@ -82,4 +89,3 @@ tmp/
 # SonarQube
 .sonarqube/
 .sonarlint/
-
