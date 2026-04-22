@@ -1,0 +1,287 @@
+# .gitignore.example
+# ============================================================================
+# Velauto Backend - .gitignore Örnek Dosyası
+# ============================================================================
+# Bu dosya, projenin tamamı için .gitignore kurallarının bir referans örneğidir.
+#
+# 📋 KURALLAR:
+# 1. Bu dosya GIT'e COMMIT EDİLİR (version control'de kalır)
+# 2. Hassas ortam dosyalarını (.env, application.yml vb.) ASLA commit etmeyin
+# 3. .env dosyasını oluşturmak için .env.example dosyasını kopyalayın
+# 4. Yeni team üyeleri bu dosyayı referans alarak kendi ortamlarını kurarlar
+#
+# ⚠️ ÖNEMLI:
+# - .env dosyası kişisel ortam ayarlarınızı içerir (asla commit etmeyin!)
+# - application-local.yml gibi lokal yapılandırmalar commit edilmemelidir
+# - Hassas bilgiler (parolalar, API anahtarları) hiçbir zaman git'e girilmemelidir
+
+# ============================================================================
+# DOCUMENTATION - Dokümantasyon
+# ============================================================================
+HELP.md
+
+# ============================================================================
+# MAVEN - Maven Build Tool İçin İgnore Edilecek Dosyalar
+# ============================================================================
+target/
+.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.bak
+release.properties
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# ============================================================================
+# ENVIRONMENT & CONFIGURATION - Ortam ve Konfigürasyon Dosyaları
+# ============================================================================
+# 🔐 ORTAM DOSYALARI (Hassas Bilgiler - ASLA Commit Etmeyin!)
+#
+# .env dosyasını kullanmak için:
+# 1. .env.example dosyasını kopyalayın: cp .env.example .env
+# 2. .env dosyasında lokal ayarlarınızı yapın
+# 3. .env dosyası .gitignore'a eklidir (otomatik olarak git'i görünmez)
+#
+# Ortam dosyaları (.env, application-*.yml vb.) asla version control'de yer almamalıdır
+
+# Environment dosyaları
+.env
+.env.local
+.env.*.local
+.env.backup
+
+# Application konfigürasyon dosyaları (lokal ayarlar)
+application.yml
+application.yaml
+application.properties
+application-local.yml
+application-local.yaml
+application-local.properties
+application-dev.properties
+application-prod.properties
+
+# Security konfigürasyonları (hassas bilgiler içerebilir)
+security.yaml
+security.properties
+security-local.yaml
+
+# Lokal properties
+.properties.local
+*.properties.local
+
+# ============================================================================
+# BUILD OUTPUTS - Build Çıktıları
+# ============================================================================
+build/
+dist/
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# ============================================================================
+# IDE CONFIGURATIONS - IDE Konfigürasyonları
+# ============================================================================
+
+# STS (Spring Tool Suite)
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+sts4-cache/
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+*.iml~
+out/
+*.iml.bak
+
+# Eclipse
+.gradle/
+.project
+bin/
+.classpath
+.c9/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+/nbactions.xml
+/nb-configuration.xml
+
+# VS Code
+.vscode/
+*.code-workspace
+jsconfig.json
+tsconfig.json
+
+# Visual Studio
+.vs/
+.vscode/settings.json
+
+# Sublime Text
+.sublime-project
+.sublime-workspace
+
+# ============================================================================
+# OPERATING SYSTEM FILES - İşletim Sistemi Dosyaları
+# ============================================================================
+
+# MacOS
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.~*
+
+# ============================================================================
+# LOGS - Log Dosyaları
+# ============================================================================
+*.log
+logs/
+*.log.*
+out.txt
+debug.log
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# ============================================================================
+# TEMPORARY FILES - Geçici Dosyalar
+# ============================================================================
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+.~*
+*.orig
+*.rej
+
+# ============================================================================
+# DEPENDENCIES - Bağımlılıklar
+# ============================================================================
+# Node.js (Frontend integration için)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Python (Utilities için)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+
+# ============================================================================
+# DATABASE - Veritabanı Dosyaları
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+*.dbf
+*.mdb
+*.accdb
+
+# ============================================================================
+# COVERAGE & TEST REPORTS - Test Raporları
+# ============================================================================
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+test-results/
+*.xml
+
+# ============================================================================
+# GENERATED FILES - Otomatik Oluşturulan Dosyalar
+# ============================================================================
+.generated/
+target/generated-sources/
+target/generated-test-sources/
+
+# ============================================================================
+# INTELLIJ
+# ============================================================================
+*.dic
+*.sw?
+
+# ============================================================================
+# SETUP & FIRST TIME SETUP - İlk Kurulum Talimatları
+# ============================================================================
+#
+# 🚀 YENİ GELIŞTIRICI İÇİN SETUP ADIMLARI:
+#
+# 1. Projeyi clone edin:
+#    git clone https://github.com/your-repo/velauto-backend.git
+#    cd velauto-backend
+#
+# 2. .env dosyasını oluşturun:
+#    cp .env.example .env
+#
+# 3. .env dosyasını açıp değerleri kendi ortamınıza göre düzenleyin:
+#    - MySQL Veritabanı Bağlantı Bilgileri:
+#      * DB_URL: jdbc:mysql://localhost:3306/velauto
+#      * DB_USERNAME: root (veya kendi MySQL kullanıcı adı)
+#      * DB_PASSWORD: 123 (veya kendi MySQL şifresi)
+#    - JWT secret key'i değiştirin (production ortamı için)
+#    - E-mail ayarlarını yapılandırın
+#    - İstenirse diğer servisleri yapılandırın
+#
+# 4. MySQL Veritabanı Oluşturun:
+#    CREATE DATABASE velauto;
+#
+# 5. Projeyi build edin:
+#    mvn clean install
+#
+# 6. Uygulamayı çalıştırın:
+#    mvn spring-boot:run
+#
+# 7. Uygulama başladığında erişim: http://localhost:8090
+#
+# 📁 DOSYA AÇIKLAMALARI:
+#
+# .env              -> Lokal ortam dosyası (GIT IGNORE - şablon olmayan gerçek değerler)
+# .env.example      -> .env şablonu (GIT COMMIT - referans olarak)
+# .gitignore        -> Git ignore kuralları (GIT COMMIT - zorunlu)
+# .gitignore.example-> Bu dosya - referans ve dokumentasyon (GIT COMMIT)
+#
+# ✅ CHECKLIST - Setup'ı Tamamladıktan Sonra:
+# - [ ] .env dosyası oluşturdum
+# - [ ] .env dosyasını .gitignore'da kontrol ettim (ignored olmalı)
+# - [ ] MySQL veritabanını oluşturdum
+# - [ ] Veritabanı bağlantısını test ettim (application.yaml kontrol)
+# - [ ] Uygulamayı başarıyla başlattım (http://localhost:8090)
+# - [ ] git status ile .env dosyasının görünmediğini doğruladım
+# - [ ] API'ları Postman ile test ettim (Velauto_API_Complete.postman_collection.json)
+
+
