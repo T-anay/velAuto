@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import {
   api,
   clearStoredTokens,
+  DEFAULT_SERVICE_CATALOG_ITEMS,
   getStoredTokens,
   normalizeAppointment,
   normalizeCustomer,
@@ -28,6 +29,7 @@ const CACHE_KEYS = {
   appointments: 'velauto_appointments_cache',
   payments: 'velauto_pending_payments_cache',
   serviceCatalog: 'velauto_service_catalog_cache',
+  removedServiceCatalogNames: 'velauto_service_catalog_removed_names',
 };
 
 const loadJsonArray = (keys, fallback = []) => {
@@ -58,6 +60,44 @@ const loadJsonValue = (keys, fallback = null) => {
 };
 
 const saveJson = (key, value) => writeStorage(key, value);
+
+const loadStringArray = (key) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((value) => typeof value === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveStringArray = (key, values) => writeStorage(key, values);
+
+const normalizeCatalogName = (value) => normalizeText(value).toLowerCase();
+
+const buildServiceCatalog = (items, removedNames = []) => {
+  const removedSet = new Set(removedNames.map(normalizeCatalogName));
+  const catalog = new Map();
+
+  [...DEFAULT_SERVICE_CATALOG_ITEMS, ...(Array.isArray(items) ? items : [])].forEach((item, index) => {
+    const name = normalizeText(item?.name, item?.itemName, item?.serviceName);
+    if (!name) return;
+
+    const normalizedName = normalizeCatalogName(name);
+    if (removedSet.has(normalizedName)) return;
+
+    if (!catalog.has(normalizedName)) {
+      catalog.set(normalizedName, normalizeServiceCatalogItem({
+        ...item,
+        id: item?.id ?? `catalog-${index}`,
+        name,
+      }));
+    }
+  });
+
+  return Array.from(catalog.values());
+};
 
 const extractCollection = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -105,7 +145,11 @@ export const ServiceProvider = ({ children }) => {
   const [customers, setCustomers] = useState(() => loadJsonArray([CACHE_KEYS.customers, 'velauto_customers'], []));
   const [appointments, setAppointments] = useState(() => loadJsonArray([CACHE_KEYS.appointments, 'velauto_appointments'], []));
   const [payments, setPayments] = useState(() => loadJsonArray([CACHE_KEYS.payments, 'velauto_payments'], []));
-  const [serviceCatalog, setServiceCatalog] = useState(() => loadJsonArray([CACHE_KEYS.serviceCatalog], []));
+  const [serviceCatalog, setServiceCatalog] = useState(() => buildServiceCatalog(
+    loadJsonArray([CACHE_KEYS.serviceCatalog], []),
+    loadStringArray(CACHE_KEYS.removedServiceCatalogNames),
+  ));
+  const [removedServiceCatalogNames, setRemovedServiceCatalogNames] = useState(() => loadStringArray(CACHE_KEYS.removedServiceCatalogNames));
   const [isBootstrapping, setIsBootstrapping] = useState(Boolean(savedTokens.accessToken || savedTokens.refreshToken));
   const [error, setError] = useState('');
 
@@ -115,6 +159,7 @@ export const ServiceProvider = ({ children }) => {
   useEffect(() => saveJson(CACHE_KEYS.appointments, appointments), [appointments]);
   useEffect(() => saveJson(CACHE_KEYS.payments, payments), [payments]);
   useEffect(() => saveJson(CACHE_KEYS.serviceCatalog, serviceCatalog), [serviceCatalog]);
+  useEffect(() => saveStringArray(CACHE_KEYS.removedServiceCatalogNames, removedServiceCatalogNames), [removedServiceCatalogNames]);
 
   const isValidTurkishPlate = useCallback((plate) => {
     const parts = normalizePlate(plate).split(/\s+/);
@@ -177,7 +222,10 @@ export const ServiceProvider = ({ children }) => {
       setCustomers(normalizedCustomers);
       setAppointments(normalizedAppointments);
       setJobs(normalizedJobs);
-      setServiceCatalog(normalizedCatalog);
+      setServiceCatalog((currentCatalog) => buildServiceCatalog([
+        ...currentCatalog,
+        ...normalizedCatalog,
+      ], removedServiceCatalogNames));
 
       // Keep any pending payment queue that already exists locally, but clean up stale entries.
       setPayments((currentPayments) => {
@@ -195,7 +243,7 @@ export const ServiceProvider = ({ children }) => {
     } finally {
       setIsBootstrapping(false);
     }
-  }, []);
+  }, [removedServiceCatalogNames]);
 
   useEffect(() => {
     const tokens = getStoredTokens();
@@ -547,6 +595,48 @@ export const ServiceProvider = ({ children }) => {
     return { success: true, item: normalizedItem };
   }, [jobs]);
 
+  const addServiceCatalogItem = useCallback(async (item) => {
+    const normalizedName = normalizeText(item?.name, item?.itemName, item?.title);
+    if (!normalizedName) {
+      throw new Error('Kalem adı zorunludur.');
+    }
+
+    const existingItem = serviceCatalog.find((entry) => normalizeText(entry.name).toLowerCase() === normalizedName.toLowerCase());
+    if (existingItem) {
+      return existingItem;
+    }
+
+    const payload = {
+      name: normalizedName,
+      description: normalizeText(item?.description),
+      basePrice: toNumber(item?.basePrice ?? item?.price, 0),
+    };
+
+    setRemovedServiceCatalogNames((prev) => prev.filter((name) => normalizeCatalogName(name) !== normalizeCatalogName(normalizedName)));
+
+    const created = await api.serviceCatalog.create(payload).catch(() => null);
+    const normalized = normalizeServiceCatalogItem(created || payload);
+
+    setServiceCatalog((prev) => buildServiceCatalog([
+      ...prev.filter((entry) => String(entry.id) !== String(normalized.id)),
+      normalized,
+    ], removedServiceCatalogNames));
+    return normalized;
+  }, [removedServiceCatalogNames, serviceCatalog]);
+
+  const removeServiceCatalogItem = useCallback(async (itemId) => {
+    const item = serviceCatalog.find((entry) => String(entry.id) === String(itemId));
+    const normalizedName = normalizeCatalogName(item?.name);
+
+    await api.serviceCatalog.remove(itemId).catch(() => null);
+    setServiceCatalog((prev) => prev.filter((entry) => String(entry.id) !== String(itemId)));
+    if (normalizedName) {
+      setRemovedServiceCatalogNames((prev) => [...new Set([...prev.filter((name) => normalizeCatalogName(name) !== normalizedName), normalizedName])]);
+    }
+    pushToast({ type: 'info', title: 'Kalem silindi', message: 'Fatura kalemi kataloğundan kaldırıldı.' });
+    return { success: true };
+  }, [serviceCatalog]);
+
   const removeServiceItem = useCallback((jobId, itemId) => {
     const job = jobs.find((entry) => String(entry.id) === String(jobId));
     if (!job) return;
@@ -674,7 +764,9 @@ export const ServiceProvider = ({ children }) => {
     setJobStatus,
     completeJob,
     addServiceItem,
+    addServiceCatalogItem,
     removeServiceItem,
+    removeServiceCatalogItem,
     refreshJob,
     addCustomer,
     deleteCustomer,
@@ -690,6 +782,7 @@ export const ServiceProvider = ({ children }) => {
     addCustomer,
     addJob,
     addServiceItem,
+    addServiceCatalogItem,
     approveAppointment,
     appointments,
     completeJob,
@@ -708,6 +801,7 @@ export const ServiceProvider = ({ children }) => {
     updateUserProfile,
     changeUserPassword,
     refreshJob,
+    removeServiceCatalogItem,
     removeServiceItem,
     serviceCatalog,
     setJobStatus,

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useService } from '../context/ServiceContext';
+import { DEFAULT_SERVICE_CATALOG_ITEMS } from '../api/velautoApi';
 
 export default function IsEmriDetay() {
     const { id } = useParams();
@@ -37,14 +38,7 @@ export default function IsEmriDetay() {
 
     const catalogItems = (serviceCatalog || []).length > 0
         ? serviceCatalog.map((item) => ({ name: item.name }))
-        : [
-            { name: 'Yağ Değişimi (Motul 5W-30)' },
-            { name: 'Fren Balatası Değişimi' },
-            { name: 'Hava Filtresi Değişimi' },
-            { name: 'Yakıt Filtresi Değişimi' },
-            { name: 'Motor Bakımı' },
-            { name: 'Fren Hidrolik Bakımı' }
-        ];
+        : DEFAULT_SERVICE_CATALOG_ITEMS.map((item) => ({ name: item.name }));
 
     const operationOptions = [...new Set([...catalogItems.map((item) => item.name), 'Özel İşlem'])];
 

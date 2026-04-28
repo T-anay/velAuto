@@ -3,6 +3,81 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useService } from '../context/ServiceContext';
 import PlateInput from '../components/PlateInput';
 import { carBrands } from '../constants/carData';
+import { api } from '../api/velautoApi';
+import { pushToast } from '../lib/toastBus';
+
+const AI_CONFIDENCE_THRESHOLD = 0.7;
+
+const normalizeForMatch = (value) => String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+const getDamageSolutionSuggestion = (label) => {
+    const normalized = normalizeForMatch(label);
+
+    if (normalized.includes('cam')) {
+        return 'Cam degisimi onerilir.';
+    }
+    if (normalized.includes('kirik') || normalized.includes('catlak')) {
+        return 'Parca degisimi onerilir.';
+    }
+    if (normalized.includes('gocuk') || normalized.includes('dent')) {
+        return 'Kaporta duzeltme ve lokal boya onerilir.';
+    }
+    if (normalized.includes('cizik') || normalized.includes('scratch')) {
+        return 'Yuzey polisaji ve boya onarimi onerilir.';
+    }
+    if (normalized.includes('far') || normalized.includes('stop') || normalized.includes('lamba')) {
+        return 'Aydinlatma parcasi degisimi onerilir.';
+    }
+    if (normalized.includes('lastik')) {
+        return 'Lastik degisimi ve balans kontrolu onerilir.';
+    }
+
+    return 'Hasara uygun parca ve onarim islemi icin teknik kontrol onerilir.';
+};
+
+const getMultiDamageSolutionSuggestion = (damages) => {
+    if (!Array.isArray(damages) || damages.length <= 1) {
+        return getDamageSolutionSuggestion(damages?.[0]?.label);
+    }
+
+    const sortedLabels = [...new Set(
+        damages
+            .map((damage) => damage?.label)
+            .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'tr'));
+
+    if (sortedLabels.length === 2) {
+        return `${sortedLabels[0]} ve ${sortedLabels[1]} icin kapsamli kontrol ve gerekli onarim onerilir.`;
+    }
+
+    return 'Birden fazla hasar icin kapsamli kontrol ve gerekli onarim onerilir.';
+};
+
+const buildVehicleEntryAiSummary = (damages) => {
+    if (!Array.isArray(damages) || damages.length === 0) {
+        return [
+            'Hasar tespit edilemedi, usta incelemesi onerilir.',
+            'Aracin detayli fiziksel kontrolu ve test surusu onerilir.',
+            'Usta gorusu ile detaylari girerek devam edin.',
+        ].join(' ');
+    }
+
+    const allDamagesHighConfidence = damages.every(
+        (damage) => Number(damage?.confidence || 0) >= AI_CONFIDENCE_THRESHOLD
+    );
+
+    const firstSentence = allDamagesHighConfidence
+        ? 'Yukaridaki hasarlar tespit edildi.'
+        : 'Yukaridaki hasarlar tespit edildi ancak usta incelemesi onerilir.';
+
+    const secondSentence = getMultiDamageSolutionSuggestion(damages);
+    const thirdSentence = 'Sonraki asamada usta gorusu ile detaylari girerek devam edin.';
+
+    return `${firstSentence} ${secondSentence} ${thirdSentence}`;
+};
 
 export default function VehicleEntry() {
     const navigate = useNavigate();
@@ -35,6 +110,9 @@ export default function VehicleEntry() {
     const [error, setError] = useState('');
     const [errorFields, setErrorFields] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [isAnalyzingDamage, setIsAnalyzingDamage] = useState(false);
+    const [detectedDamages, setDetectedDamages] = useState([]);
+    const [aiAnalysisReport, setAiAnalysisReport] = useState('');
 
     const buildPlate = () => `${formData.province} ${formData.letters.toUpperCase()} ${formData.digits}`;
 
@@ -48,6 +126,47 @@ export default function VehicleEntry() {
     };
 
     const isValidTurkishPhone = (phone) => /^\d{10}$/.test(phone.trim());
+
+    const handleDamageAnalysis = async () => {
+        if (formData.photos.length === 0) {
+            pushToast({ type: 'warning', title: 'Gorsel gerekli', message: 'AI analizi icin en az bir gorsel secin.' });
+            return;
+        }
+
+        try {
+            setIsAnalyzingDamage(true);
+            const responses = await Promise.all(
+                formData.photos.map((file) => api.ai.analyzeDamage({
+                    file,
+                    description: formData.complaint || 'Musteri sikayeti belirtilmedi.',
+                }))
+            );
+
+            const mergedByLabel = new Map();
+
+            responses.forEach((response) => {
+                (response?.detected_damages || []).forEach((damage) => {
+                    const previous = mergedByLabel.get(damage.label);
+                    if (!previous || damage.confidence > previous.confidence) {
+                        mergedByLabel.set(damage.label, damage);
+                    }
+                });
+            });
+
+            const mergedDamages = Array.from(mergedByLabel.values());
+            setDetectedDamages(mergedDamages);
+            setAiAnalysisReport(buildVehicleEntryAiSummary(mergedDamages));
+            pushToast({ type: 'success', title: 'AI analiz tamamlandi', message: 'Gorsellerden hasar tespiti yapildi.' });
+        } catch (analysisError) {
+            pushToast({
+                type: 'error',
+                title: 'AI analiz hatasi',
+                message: analysisError.message || 'AI servisine ulasilamadi.',
+            });
+        } finally {
+            setIsAnalyzingDamage(false);
+        }
+    };
 
     const handleSubmit = async () => {
         const errors = [];
@@ -88,6 +207,8 @@ export default function VehicleEntry() {
                 brand: finalBrand,
                 total: 0,
                 complaint: formData.complaint || 'Belirtilmedi',
+                aiDetectedDamages: detectedDamages,
+                aiAnalysisReport,
             });
 
             setError('');
@@ -223,6 +344,36 @@ export default function VehicleEntry() {
                                 </div>
                             )}
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={handleDamageAnalysis}
+                            disabled={isAnalyzingDamage || formData.photos.length === 0}
+                            className="w-full mt-6 p-4 bg-[var(--bg-main)] border border-[var(--border-strong)] text-[var(--text-primary)] font-black rounded-xl hover:border-[var(--accent)] transition-all uppercase tracking-widest disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {isAnalyzingDamage ? 'AI ANALIZ CALISIYOR...' : 'AI HASAR ANALIZI CALISTIR'}
+                        </button>
+
+                        {detectedDamages.length > 0 && (
+                            <div className="mt-4 p-4 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-main)] text-left">
+                                <p className="text-xs uppercase tracking-widest font-black text-[var(--text-muted)] mb-2">Tespit Edilen Hasarlar</p>
+                                <div className="space-y-2">
+                                    {detectedDamages.map((item) => (
+                                        <div key={item.label} className="flex items-center justify-between text-sm text-[var(--text-primary)]">
+                                            <span>{item.label}</span>
+                                            <span className="font-bold text-[var(--accent)]">%{Math.round(item.confidence * 100)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {aiAnalysisReport && (
+                            <div className="mt-4 p-4 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-main)] text-left">
+                                <p className="text-xs uppercase tracking-widest font-black text-[var(--text-muted)] mb-2">AI Teknik Ozet</p>
+                                <p className="text-sm whitespace-pre-line text-[var(--text-primary)]">{aiAnalysisReport}</p>
+                            </div>
+                        )}
 
                         <button
                             onClick={handleSubmit}

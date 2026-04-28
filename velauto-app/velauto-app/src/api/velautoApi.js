@@ -5,6 +5,16 @@ const STORAGE_KEYS = {
 };
 
 const DEFAULT_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8090';
+const DEFAULT_AI_BASE_URL = import.meta.env.VITE_AI_API_BASE_URL || 'http://localhost:8001';
+
+export const DEFAULT_SERVICE_CATALOG_ITEMS = [
+  { id: 'seed-oil-change', name: 'Yağ Değişimi (Motul 5W-30)', description: 'Varsayılan servis kalemi' },
+  { id: 'seed-brake-pads', name: 'Fren Balatası Değişimi', description: 'Varsayılan servis kalemi' },
+  { id: 'seed-air-filter', name: 'Hava Filtresi Değişimi', description: 'Varsayılan servis kalemi' },
+  { id: 'seed-fuel-filter', name: 'Yakıt Filtresi Değişimi', description: 'Varsayılan servis kalemi' },
+  { id: 'seed-engine-service', name: 'Motor Bakımı', description: 'Varsayılan servis kalemi' },
+  { id: 'seed-brake-fluid', name: 'Fren Hidrolik Bakımı', description: 'Varsayılan servis kalemi' },
+];
 
 const readStorage = (key, fallback = null) => {
   try {
@@ -205,6 +215,7 @@ export const normalizePayment = (payment, customerLookup = new Map(), vehicleLoo
 };
 
 const buildUrl = (path) => `${getApiBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+const buildAiUrl = (path) => `${DEFAULT_AI_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 
 const parseResponseBody = async (response, responseType) => {
   if (response.status === 204) return null;
@@ -279,6 +290,33 @@ const request = async (path, options = {}, retry = true) => {
       const retryErrorPayload = await parseResponseBody(retryResponse, responseType).catch(() => null);
       throw new Error(extractApiError(retryErrorPayload, retryResponse.status));
     }
+  }
+
+  const errorPayload = await parseResponseBody(response, responseType).catch(() => null);
+  throw new Error(extractApiError(errorPayload, response.status));
+};
+
+const aiRequest = async (path, options = {}) => {
+  const {
+    method = 'GET',
+    body,
+    headers = {},
+    responseType = 'json',
+  } = options;
+
+  let response;
+  try {
+    response = await fetch(buildAiUrl(path), {
+      method,
+      headers,
+      body,
+    });
+  } catch {
+    throw new Error(`AI sunucusuna ulasilamadi: ${buildAiUrl(path)}. FastAPI servisini kontrol edin.`);
+  }
+
+  if (response.ok) {
+    return parseResponseBody(response, responseType);
   }
 
   const errorPayload = await parseResponseBody(response, responseType).catch(() => null);
@@ -381,6 +419,27 @@ export const api = {
   invoices: {
     generate: (serviceFormId) => request(`/api/v1/invoices/generate/${serviceFormId}`, { method: 'POST' }),
     download: (id) => request(`/api/v1/invoices/${id}/download`, { method: 'GET', responseType: 'blob' }),
+  },
+  ai: {
+    analyzeDamage: ({ file, description }) => {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('description', description || 'Musteri sikayet metni girilmedi.');
+
+      return aiRequest('/analyze-damage', {
+        method: 'POST',
+        body: formData,
+      });
+    },
+    analyzeText: ({ description }) => {
+      const formData = new FormData();
+      formData.append('description', description || 'Musteri sikayet metni girilmedi.');
+
+      return aiRequest('/analyze-text', {
+        method: 'POST',
+        body: formData,
+      });
+    },
   },
 };
 
