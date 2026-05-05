@@ -29,7 +29,7 @@ public class AppointmentController {
   private final AppointmentService appointmentService;
 
   @PostMapping
-  @PreAuthorize("hasAnyRole('admin', 'manager', 'staff')")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'admin', 'manager', 'staff')")
   public ResponseEntity<AppointmentResponseDto> createAppointment(
       @Valid @RequestBody AppointmentCreateDto request,
       @AuthenticationPrincipal CustomUserDetails userDetails

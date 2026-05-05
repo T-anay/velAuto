@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.apache.commons.text.StringEscapeUtils;
 
 @Slf4j
 @Service
@@ -16,7 +18,7 @@ public class AuditLogServiceImpl implements AuditLogService {
   private final AuditLogRepository auditLogRepository;
 
   @Override
-  @Transactional
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
   public void log(Integer userId, String action, String entityType, Integer entityId, String details) {
     try {
       // AuditLog nesnesi oluştur
@@ -25,7 +27,7 @@ public class AuditLogServiceImpl implements AuditLogService {
           .action(action)
           .entityType(entityType)
           .entityId(entityId)
-          .details(details)
+          .details(toJsonDetails(details))
           .build();
 
       // Veritabanına kaydet
@@ -39,6 +41,14 @@ public class AuditLogServiceImpl implements AuditLogService {
       log.error("Audit log kaydedilemedi: userId={}, action={}, error={}",
           userId, action, e.getMessage());
     }
+  }
+
+  private String toJsonDetails(String details) {
+    if (details == null || details.isBlank()) {
+      return null;
+    }
+
+    return "{\"message\":\"" + StringEscapeUtils.escapeJson(details) + "\"}";
   }
 
   @Override

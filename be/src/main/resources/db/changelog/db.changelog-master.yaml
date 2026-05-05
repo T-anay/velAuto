@@ -25,3 +25,7 @@ databaseChangeLog:
       file: db/changelog/changes/012-create-invoices-table.sql
   - include:
       file: db/changelog/changes/013-lock-and-expenses.sql
+  - include:
+      file: db/changelog/changes/014-normalize-user-role-enum.sql
+  - include:
+      file: db/changelog/changes/015-nullable-user-email.sql

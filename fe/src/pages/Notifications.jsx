@@ -29,7 +29,7 @@ export default function Notifications() {
     ];
 
     const completedJobs = jobs
-      .filter((job) => job.status === 'COMPLETED')
+      .filter((job) => String(job.statusKey || job.status).toUpperCase() === 'COMPLETED')
       .slice(0, 10)
       .map((job) => ({
         id: `job-${job.id}`,

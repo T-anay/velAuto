@@ -46,7 +46,7 @@ export default function Expenses() {
   const totals = useMemo(() => {
     const totalExpense = filteredExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const totalRevenue = jobs
-      .filter((job) => job.status === 'COMPLETED')
+      .filter((job) => String(job.statusKey || job.status).toUpperCase() === 'COMPLETED')
       .reduce((sum, job) => sum + Number(job.total || 0), 0);
     const netProfit = totalRevenue - totalExpense;
     return { totalExpense, totalRevenue, netProfit };

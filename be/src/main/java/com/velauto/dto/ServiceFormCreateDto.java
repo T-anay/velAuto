@@ -18,16 +18,20 @@ public class ServiceFormCreateDto {
   @NotNull(message = Messages.SERVICE_FORM_VEHICLE_ID_REQUIRED)
   private Integer vehicleId;
 
-  @NotNull(message = Messages.SERVICE_FORM_CUSTOMER_ID_REQUIRED)
+  // Hızlı kayıt için müşteri ID'si ve KM zorunluluğunu kaldırıyoruz
   private Integer customerId;
-
-  @NotNull(message = Messages.SERVICE_FORM_KM_REQUIRED)
-  @Min(value = 0, message = Messages.SERVICE_FORM_KM_MIN)
   private Integer currentKm;
 
+  // React'ten gelen ismi karşılaması için alan adını "description" yaptık
   @Size(max = 2000, message = Messages.SERVICE_FORM_COMPLAINTS_SIZE)
-  private String complaints;
+  private String description;
+
+  // complaints olarak kullanmaya devam etmek istersen yukarıdaki "description"ı silip bunu aktif edebilirsin
+  // Ancak bu durumda React tarafını değiştirmen gerekir. Biz React'i ellemeden Java'yı uyumluyoruz.
 
   @Size(max = 2000, message = Messages.SERVICE_FORM_CONDITION_SIZE)
   private String generalCondition;
+
+  // React'ten gelen statüyü yakalayabilmek için eklendi
+  private String status;
 }

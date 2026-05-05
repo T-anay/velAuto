@@ -1,8 +1,10 @@
+import { setStoredTokens } from '../api/velautoApi';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useService } from '../context/ServiceContext';
 import { useTheme } from '../context/ThemeContext';
 import { pushToast } from '../lib/toastBus';
+import { api as velautoApi } from '../api/velautoApi';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -17,16 +19,43 @@ export default function Login() {
         setError('');
         setIsSubmitting(true);
 
-        const response = await login(credentials);
-        if (!response.success) {
-            setError(response.message);
-            setIsSubmitting(false);
-            return;
-        }
+        try {
+            const response = await velautoApi.auth.login(credentials);
 
-        setIsSubmitting(false);
-        pushToast({ type: 'success', title: 'Giriş başarılı', message: `Hoş geldiniz, ${response.user.fullName || response.user.email}!` });
-        navigate('/dashboard');
+            // velautoApi.js zaten veriyi (.data) döndürdüğü için doğrudan response üzerinden okuyoruz
+            const token = response?.accessToken;
+            const refreshToken = response?.refreshToken || '';
+
+            if (token) {
+                // 1. Token'ları doğru çekmeceye koyuyoruz
+                setStoredTokens({
+                    accessToken: token,
+                    refreshToken: refreshToken
+                });
+
+                // 2. State'i güncelle (Backend'den gelen tüm response objesini user olarak gönderiyoruz)
+                await login(response);
+
+                pushToast({
+                    type: 'success',
+                    title: 'Giriş başarılı',
+                    message: `Hoş geldiniz, ${response.firstName || response.email || credentials.email}!`
+                });
+
+                // 3. Yönlendir
+                navigate('/dashboard');
+            } else {
+                setError("Giriş yapıldı ama sistemden anahtar (token) alınamadı.");
+            }
+
+        } catch (err) {
+            console.error("HATA DETAYI YAKALANDI:", err);
+            // Hata mesajını daha güvenli bir şekilde okumaya çalışıyoruz
+            const message = err.response?.data?.message || err.message || 'E-posta veya şifre hatalı!';
+            setError(message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -44,7 +73,7 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="w-full bg-[var(--bg-card)] p-10 rounded-3xl shadow-2xl text-center border border-[var(--border-soft)] animate-in fade-in slide-in-from-bottom-4 duration-500 backdrop-blur">
                 <div className="mb-10">
                     <h1 className="text-[var(--accent)] text-4xl font-black mb-3 tracking-[0.3em] uppercase">velAuto</h1>
-                    <p className="text-gray-400 font-medium">Şimdilik demo giriş açık, sonradan doğrulama eklenecek</p>
+                    <p className="text-gray-400 font-medium">Lütfen sistem bilgilerinizle giriş yapın</p>
                 </div>
 
                 <div className="space-y-4 text-left">
@@ -53,6 +82,7 @@ export default function Login() {
                         onChange={(e) => setCredentials((prev) => ({ ...prev, email: e.target.value }))}
                         type="email"
                         placeholder="E-posta adresi"
+                        required
                         className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-strong)] rounded-xl text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all placeholder:text-gray-500"
                     />
                     <input
@@ -60,10 +90,11 @@ export default function Login() {
                         onChange={(e) => setCredentials((prev) => ({ ...prev, password: e.target.value }))}
                         type="password"
                         placeholder="Şifre"
+                        required
                         className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-strong)] rounded-xl text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all placeholder:text-gray-500"
                     />
 
-                    {error && <p className="text-red-400 text-sm font-bold">{error}</p>}
+                    {error && <p className="text-red-400 text-sm font-bold animate-pulse">{error}</p>}
 
                     <button
                         type="submit"
@@ -73,7 +104,6 @@ export default function Login() {
                         {isSubmitting ? 'GİRİŞ YAPILIYOR...' : 'SİSTEME GİRİŞ YAP'}
                     </button>
                 </div>
-
             </form>
         </div>
     );

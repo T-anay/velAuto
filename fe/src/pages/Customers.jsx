@@ -4,6 +4,7 @@ import PlateInput from '../components/PlateInput';
 
 export default function Musteriler() {
     const { customers, addCustomer, deleteCustomer, isValidTurkishPlate } = useService();
+    const { vehicles } = useService();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
 
@@ -77,8 +78,8 @@ export default function Musteriler() {
     return (
         <div className="animate-in fade-in duration-500">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-black tracking-tight text-[var(--text-primary)] uppercase">Musteri Rehberi</h1>
-                    <button onClick={() => setShowAddModal(true)} className="bg-[var(--border-strong)] text-[var(--text-primary)] px-6 py-3 rounded-xl font-bold hover:bg-opacity-80 transition-all text-sm uppercase tracking-widest shadow-lg">YENI MUSTERI EKLE</button>
+                <h1 className="text-3xl font-black tracking-tight text-[var(--text-primary)] uppercase">Müşteriler</h1>
+                <button onClick={() => setShowAddModal(true)} className="bg-[var(--border-strong)] text-[var(--text-primary)] px-6 py-3 rounded-xl font-bold hover:bg-opacity-80 transition-all text-sm uppercase tracking-widest shadow-lg">YENI MUSTERI EKLE</button>
             </div>
 
             <div className="relative mb-8">
@@ -93,9 +94,9 @@ export default function Musteriler() {
                             <h2 className="text-xl font-black mb-2 group-hover:text-[var(--accent)] transition-colors text-[var(--text-primary)]">{m.name}</h2>
                             <p className="text-[var(--accent)] text-lg font-bold mb-4 tracking-wider">{formatPhoneDisplay(m.phone)}</p>
 
-                            <div className="flex items-center gap-2 mt-auto pt-3 border-t border-[var(--border-strong)]/30">
-                                <span className="bg-[var(--bg-main)] border border-[var(--border-strong)] px-3 py-1 rounded-lg text-xs font-black tracking-widest text-[var(--text-primary)]">{m.plate}</span>
-                                <button onClick={() => setDeleteModal({ isOpen: true, id: m.id, name: m.name })} className="text-xs text-[var(--danger)] border border-[var(--danger)]/30 px-3 py-1 rounded-lg uppercase font-black hover:bg-[var(--danger)] hover:text-[var(--text-primary)] transition-colors ml-auto tracking-widest">SIL</button>
+                            <div className="flex flex-col gap-3 mt-auto pt-3 border-t border-[var(--border-strong)]/30">
+
+                                <button onClick={() => setDeleteModal({ isOpen: true, id: m.id, name: m.name })} className="w-full text-xs text-[var(--danger)] border border-[var(--danger)]/30 px-3 py-2 rounded-lg uppercase font-black hover:bg-[var(--danger)] hover:text-[var(--text-primary)] transition-colors tracking-widest">SIL</button>
                             </div>
                         </div>
                     ))

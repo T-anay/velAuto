@@ -9,8 +9,6 @@ import {
   normalizeServiceForm,
   normalizeServiceItem,
   normalizeVehicle,
-  normalizeText,
-  normalizePlate,
   setStoredTokens,
   toNumber,
   deriveJobStatus,
@@ -98,42 +96,105 @@ const normalizeJobList = (serviceForms, customers, vehicles) => {
   return vehicles.map((vehicle) => normalizeVehicle(vehicle, customerLookup));
 };
 
+const normalizeText = (...args) => {
+  for (let arg of args) {
+    if (arg !== null && arg !== undefined && arg !== '') return String(arg);
+  }
+  return '';
+};
+
+const normalizePlate = (plate) => {
+  if (!plate) return '';
+  return plate.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+};
+
+const normalizePhoneForBackend = (phone) => {
+  const cleaned = normalizeText(phone).replace(/\D/g, '');
+  if (!cleaned) return '';
+
+  if (cleaned.startsWith('90') && cleaned.length >= 12) {
+    return `+${cleaned}`;
+  }
+
+  if (cleaned.startsWith('0') && cleaned.length >= 11) {
+    return `+90${cleaned.slice(1)}`;
+  }
+
+  return `+90${cleaned.slice(-10)}`;
+};
+
+const isBackendCompatibleIntegerId = (id) => {
+  const numericId = Number(id);
+  return Number.isInteger(numericId) && numericId > 0 && numericId <= 2147483647;
+};
+
+const splitFullName = (fullName) => {
+  const parts = normalizeText(fullName).trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return { firstName: 'Yeni', lastName: 'Müşteri' };
+  }
+
+  if (parts.length === 1) {
+    return { firstName: parts[0], lastName: '' };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(' '),
+  };
+};
+
 export const ServiceProvider = ({ children }) => {
   const savedTokens = getStoredTokens();
   const [user, setUser] = useState(() => (savedTokens.accessToken || savedTokens.refreshToken) ? loadJsonValue([CACHE_KEYS.user], null) : null);
   const [jobs, setJobs] = useState(() => loadJsonArray([CACHE_KEYS.jobs, 'velauto_jobs'], []));
   const [customers, setCustomers] = useState(() => loadJsonArray([CACHE_KEYS.customers, 'velauto_customers'], []));
+  const [vehicles, setVehicles] = useState(() => loadJsonArray(['velauto_vehicles_cache', 'velauto_vehicles'], []));
   const [appointments, setAppointments] = useState(() => loadJsonArray([CACHE_KEYS.appointments, 'velauto_appointments'], []));
   const [payments, setPayments] = useState(() => loadJsonArray([CACHE_KEYS.payments, 'velauto_payments'], []));
   const [serviceCatalog, setServiceCatalog] = useState(() => loadJsonArray([CACHE_KEYS.serviceCatalog], []));
   const [isBootstrapping, setIsBootstrapping] = useState(Boolean(savedTokens.accessToken || savedTokens.refreshToken));
   const [error, setError] = useState('');
+  const [isLoadingJob, setIsLoadingJob] = useState(false);
 
   useEffect(() => saveJson(CACHE_KEYS.user, user), [user]);
   useEffect(() => saveJson(CACHE_KEYS.jobs, jobs), [jobs]);
   useEffect(() => saveJson(CACHE_KEYS.customers, customers), [customers]);
+  useEffect(() => saveJson('velauto_vehicles_cache', vehicles), [vehicles]);
   useEffect(() => saveJson(CACHE_KEYS.appointments, appointments), [appointments]);
   useEffect(() => saveJson(CACHE_KEYS.payments, payments), [payments]);
   useEffect(() => saveJson(CACHE_KEYS.serviceCatalog, serviceCatalog), [serviceCatalog]);
 
+  // Normalize any cached jobs/appointments on mount so older caches still have status metadata
+  useEffect(() => {
+    setJobs((prev) => (Array.isArray(prev) ? prev.map((j) => {
+      try {
+        const meta = deriveJobStatus(j.status || j.statusKey || j.raw?.status || 'IN_PROGRESS');
+        return { ...j, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
+      } catch (e) {
+        return j;
+      }
+    }) : prev));
+
+    setAppointments((prev) => (Array.isArray(prev) ? prev.map((a) => {
+      try {
+        const meta = deriveJobStatus(a.status || a.statusKey || a.raw?.status || a.type || 'PENDING');
+        return { ...a, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
+      } catch (e) {
+        return a;
+      }
+    }) : prev));
+  }, []);
+
   const isValidTurkishPlate = useCallback((plate) => {
-    const parts = normalizePlate(plate).split(/\s+/);
-    if (parts.length !== 3) return false;
+    const normalizedPlate = normalizePlate(plate);
+    const match = normalizedPlate.match(/^(\d{2})([A-Z]{1,3})(\d{2,4})$/);
+    if (!match) return false;
 
-    const [province, letters, digits] = parts;
-    const provinceNum = parseInt(province, 10);
-
+    const provinceNum = parseInt(match[1], 10);
     if (provinceNum < 1 || provinceNum > 81) return false;
-    if (!/^[A-Z]{1,3}$/.test(letters)) return false;
-    if (!/^\d{2,4}$/.test(digits)) return false;
 
-    const totalChars = province.length + letters.length + digits.length;
-
-    if (province === '34') {
-      return totalChars === 7 || totalChars === 8;
-    }
-
-    return totalChars === 7;
+    return true;
   }, []);
 
   const syncRemoteData = useCallback(async () => {
@@ -151,13 +212,19 @@ export const ServiceProvider = ({ children }) => {
         await refreshToken(tokens.refreshToken);
       }
 
+      const storedUserStr = localStorage.getItem('user');
+      const storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
+      const tenantId = storedUser?.tenantId || 1;
+
+      const query = `?page=0&size=50&tenantId=${tenantId}`;
+
       const [profileResponse, customersResponse, vehiclesResponse, appointmentsResponse, serviceFormsResponse, catalogResponse] = await Promise.all([
         api.auth.me().catch(() => null),
-        api.customers.list('?page=0&size=200').catch(() => []),
-        api.vehicles.list('?page=0&size=200').catch(() => []),
-        api.appointments.list('?page=0&size=200').catch(() => []),
-        api.serviceForms.list('?page=0&size=200').catch(() => []),
-        api.serviceCatalog.list('?page=0&size=200').catch(() => []),
+        api.customers.list(query).catch(() => []),
+        api.vehicles.list(query).catch(() => []),
+        api.appointments.list(query).catch(() => []),
+        api.serviceForms.list(query).catch(() => []),
+        api.serviceCatalog.list(query).catch(() => []), // Doğru endpoint: serviceCatalog (s takısı yok)
       ]);
 
       const normalizedCustomers = extractCollection(customersResponse).map(normalizeCustomer);
@@ -172,14 +239,25 @@ export const ServiceProvider = ({ children }) => {
       const normalizedAppointments = normalizedAppointmentsRaw.map((appointment) => normalizeAppointment(appointment, customerLookup, vehicleLookup));
       const normalizedJobs = normalizeJobList(normalizedServiceFormsRaw, normalizedCustomers, normalizedVehicles);
 
+      // Attach localized status metadata for UI (statusKey, statusLabel) while preserving `status` for logic
+      const enrichedAppointments = (normalizedAppointments || []).map((a) => {
+        const meta = deriveJobStatus(a.status || a.type || a.statusRaw || 'PENDING');
+        return { ...a, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
+      });
+
+      const enrichedJobs = (normalizedJobs || []).map((j) => {
+        const meta = deriveJobStatus(j.status || j.statusKey || j.raw?.status || j.type || 'IN_PROGRESS');
+        return { ...j, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
+      });
+
       const cachedUser = loadJsonValue([CACHE_KEYS.user], null);
       setUser(normalizeUser(profileResponse, cachedUser?.email || ''));
       setCustomers(normalizedCustomers);
-      setAppointments(normalizedAppointments);
-      setJobs(normalizedJobs);
+      setVehicles(normalizedVehicles);
+      setAppointments(enrichedAppointments);
+      setJobs(enrichedJobs);
       setServiceCatalog(normalizedCatalog);
 
-      // Keep any pending payment queue that already exists locally, but clean up stale entries.
       setPayments((currentPayments) => {
         const queue = Array.isArray(currentPayments) ? currentPayments : [];
         const jobIds = new Set(normalizedJobs.map((job) => String(job.id)));
@@ -199,79 +277,114 @@ export const ServiceProvider = ({ children }) => {
 
   useEffect(() => {
     const tokens = getStoredTokens();
+
     if (!tokens.accessToken && !tokens.refreshToken) {
       setIsBootstrapping(false);
       return;
     }
 
-    void syncRemoteData();
-  }, [syncRemoteData]);
+    api.auth.me()
+      .then(profileResponse => {
+        const cachedUser = loadJsonValue([CACHE_KEYS.user], null);
+        setUser(normalizeUser(profileResponse, cachedUser?.email || ''));
+      })
+      .catch((err) => {
+        console.warn("Oturum doğrulanamadı, token süresi dolmuş olabilir.", err);
+      })
+      .finally(() => {
+        setIsBootstrapping(false);
+      });
+
+  }, []);
 
   const ensureCustomer = useCallback(async ({ fullName, phone, plate, email, address, notes }) => {
     const normalizedPlate = normalizePlate(plate);
+    const normalizedPhone = normalizePhoneForBackend(phone);
     const existingCustomer = customers.find((customer) => normalizePlate(customer.plate) === normalizedPlate || normalizeText(customer.phone) === normalizeText(phone));
     if (existingCustomer) {
       return existingCustomer;
     }
 
+    // Telefon ile backend ön-kontrol isteği (404) gürültü yaptığı için devre dışı.
+
+    const { firstName, lastName } = splitFullName(fullName);
     const payload = {
-      fullName: normalizeText(fullName, email, 'Yeni Müşteri'),
-      phone: normalizeText(phone),
-      email: normalizeText(email),
+      firstName,
+      lastName,
+      customer: normalizeText(fullName, 'Yeni Müşteri'),
+      phone: normalizedPhone,
       address: normalizeText(address),
       notes: normalizeText(notes),
+      plate: normalizedPlate,
     };
 
-    let created = null;
-    try {
-      created = await api.customers.create(payload);
-    } catch {
-      created = null;
-    }
-
+    const created = await api.customers.create(payload);
     const normalized = normalizeCustomer(created || { ...payload, id: Date.now() });
     setCustomers((prev) => [...prev.filter((customer) => String(customer.id) !== String(normalized.id)), normalized]);
     return normalized;
   }, [customers]);
 
-  const ensureVehicle = useCallback(async ({ licensePlate, customerId, customerName, brand, model, currentKm, chassisNo, status, complaint, appointmentId }) => {
+  const ensureVehicle = useCallback(async ({ licensePlate, customerId, customerName, brand, model }) => {
     const normalizedPlate = normalizePlate(licensePlate);
+    const customerLookup = new Map(customers.map((customer) => [String(customer.id), customer]));
+
+    // Araç zaten var mı kontrol et
+    const existingVehicle = vehicles?.find((vehicle) => normalizePlate(vehicle?.licensePlate || vehicle?.plate) === normalizedPlate);
+    if (existingVehicle) {
+      return existingVehicle;
+    }
+
     const payload = {
       licensePlate: normalizedPlate,
       customerId,
       brand: normalizeText(brand),
-      model: normalizeText(model),
-      currentKm: toNumber(currentKm, 0),
-      chassisNo: normalizeText(chassisNo),
-      status: normalizeText(status, 'IN_PROGRESS'),
-      complaint: normalizeText(complaint),
-      appointmentId,
-      customerName: normalizeText(customerName),
+      model: normalizeText(model)
     };
 
-    const created = await api.vehicles.create(payload);
-    const normalized = normalizeVehicle(created || payload, new Map(customers.map((customer) => [String(customer.id), customer])));
+    let created;
+    try {
+      created = await api.vehicles.create(payload);
+    } catch (err) {
+      const status = err?.status || err?.response?.status;
+      if (status !== 409) {
+        throw err;
+      }
+
+      const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
+      const tenantId = storedUser?.tenantId || user?.raw?.tenantId || 1;
+      const listResponse = await api.vehicles.list(`?page=0&size=100&tenantId=${tenantId}`).catch(() => null);
+      const matched = extractCollection(listResponse)
+        .find((vehicle) => normalizePlate(vehicle?.licensePlate || vehicle?.plate) === normalizedPlate);
+
+      if (!matched) {
+        throw err;
+      }
+
+      const normalizedMatched = normalizeVehicle(matched, customerLookup);
+      normalizedMatched.plate = normalizedPlate;
+      normalizedMatched.customer = normalizeText(customerName, normalizedMatched.customer, 'Müşteri');
+      setVehicles((prev) => [
+        ...prev.filter((vehicle) => String(vehicle.id) !== String(normalizedMatched.id)),
+        normalizedMatched,
+      ]);
+      return normalizedMatched;
+    }
+
+    const normalized = normalizeVehicle(created || payload, customerLookup);
     normalized.plate = normalizedPlate;
     normalized.customer = normalizeText(customerName, normalized.customer, 'Müşteri');
+    setVehicles((prev) => [
+      ...prev.filter((vehicle) => String(vehicle.id) !== String(normalized.id)),
+      normalized,
+    ]);
     return normalized;
-  }, [customers]);
+  }, [customers, user?.raw?.tenantId, vehicles]);
 
-  const login = useCallback(async ({ email, username, password }) => {
-    const loginEmail = normalizeText(email, username);
-    const normalizedUser = normalizeUser(
-      {
-        email: loginEmail,
-        fullName: loginEmail || 'Demo Kullanıcı',
-        role: 'ADMIN',
-      },
-      loginEmail,
-    );
-
-    clearStoredTokens();
+  const login = useCallback(async (backendUser) => {
+    const normalizedUser = normalizeUser(backendUser, backendUser?.email);
     setUser(normalizedUser);
-
     return { success: true, user: normalizedUser };
-  }, [syncRemoteData]);
+  }, []);
 
   const logout = useCallback(async () => {
     try {
@@ -298,6 +411,17 @@ export const ServiceProvider = ({ children }) => {
       notes: newCustomer.notes,
     });
 
+    if (customer?.id && newCustomer?.plate) {
+      const normalizedPlate = normalizePlate(newCustomer.plate);
+      await ensureVehicle({
+        licensePlate: normalizedPlate,
+        customerId: customer.id,
+        customerName: customer.fullName,
+        brand: '',
+        model: '',
+      });
+    }
+
     pushToast({
       type: 'success',
       title: 'Müşteri eklendi',
@@ -307,45 +431,89 @@ export const ServiceProvider = ({ children }) => {
   }, [ensureCustomer]);
 
   const deleteCustomer = useCallback(async (id) => {
-    await api.customers.remove(id).catch(() => null);
-    setCustomers((prev) => prev.filter((customer) => String(customer.id) !== String(id)));
-    pushToast({ type: 'info', title: 'Müşteri silindi', message: 'Seçili müşteri kaydı kaldırıldı.' });
-    return { success: true };
+    try {
+      await api.customers.remove(id);
+      setCustomers((prev) => prev.filter((customer) => String(customer.id) !== String(id)));
+      pushToast({ type: 'info', title: 'Müşteri silindi', message: 'Seçili müşteri kaydı kaldırıldı.' });
+      return { success: true };
+    } catch (err) {
+      const message = (err && (err.message || err?.response?.data?.message)) || 'Müşteri silinirken hata oluştu.';
+      pushToast({ type: 'danger', title: 'Silme Hatası', message });
+      return { success: false, error: message };
+    }
   }, []);
 
   const addAppointment = useCallback(async (appointment) => {
+
+    const missingFields = {};
+    if (!appointment.brand) missingFields.brand = true;
+    if (!appointment.model) missingFields.model = true;
+
+    if (Object.keys(missingFields).length > 0) {
+      pushToast({
+        type: 'warning',
+        title: 'Eksik Bilgi',
+        message: 'Lütfen kırmızı ile işaretlenmiş alanları doldurunuz.',
+      });
+      return { success: false, validationErrors: missingFields };
+    }
+
     const customer = await ensureCustomer({
       fullName: appointment.customer,
       phone: appointment.phone,
       plate: appointment.plate,
     });
 
-    const vehicle = await api.vehicles.list(`?page=0&size=200`).then((result) => {
-      const collection = extractCollection(result);
-      return collection.find((item) => normalizePlate(item?.licensePlate, item?.plate) === normalizePlate(appointment.plate)) || null;
-    }).catch(() => null);
 
-    let vehicleId = vehicle?.id || null;
-    if (!vehicleId) {
-      const createdVehicle = await api.vehicles.create({
-        licensePlate: normalizePlate(appointment.plate),
+    let vehicleId = null;
+    let createdVehicle = null;
+    const normalizedPlate = normalizePlate(appointment.plate);
+    const cachedVehicle = vehicles.find(v => normalizePlate(v.licensePlate || v.plate) === normalizedPlate);
+
+    if (cachedVehicle && cachedVehicle.id) {
+      vehicleId = cachedVehicle.id;
+    } else {
+
+      createdVehicle = await api.vehicles.create({
+        licensePlate: normalizedPlate,
         customerId: customer.id,
         currentKm: 0,
+        brand: appointment.brand || 'Diğer',
+        model: appointment.model || 'Bilinmiyor'
       }).catch(() => null);
+
+      if (createdVehicle?.id) {
+        const customerLookup = new Map(customers.map((entry) => [String(entry.id), entry]));
+        const normalizedCreatedVehicle = normalizeVehicle(createdVehicle, customerLookup);
+        normalizedCreatedVehicle.plate = normalizedPlate;
+        setVehicles((prev) => [
+          ...prev.filter((vehicle) => String(vehicle.id) !== String(normalizedCreatedVehicle.id)),
+          normalizedCreatedVehicle,
+        ]);
+      }
+
       vehicleId = createdVehicle?.id || null;
-      void createdVehicle;
     }
+
 
     let created = null;
     try {
+
+      let formattedDate = appointment.time;
+      if (formattedDate && !formattedDate.includes(':00.000Z')) {
+
+        formattedDate = new Date(appointment.time).toISOString();
+      }
+
       created = await api.appointments.create({
         customerId: customer.id,
         vehicleId,
-        appointmentDate: appointment.time,
+        appointmentDate: formattedDate,
         description: appointment.service,
-        status: 'PENDING',
+
       });
     } catch {
+
       created = {
         id: Date.now(),
         customerId: customer.id,
@@ -356,19 +524,35 @@ export const ServiceProvider = ({ children }) => {
         plate: appointment.plate,
         customerName: appointment.customer,
         phone: appointment.phone,
+        brand: appointment.brand,
+        model: appointment.model,
       };
     }
 
-    const normalizedAppointment = normalizeAppointment(created || appointment, new Map([[String(customer.id), customer]]), new Map([[String(vehicleId), { id: vehicleId, licensePlate: appointment.plate }]]));
+    const vehicleSnapshot = cachedVehicle || createdVehicle || {};
+    const normalizedAppointment = normalizeAppointment(
+      created || appointment,
+      new Map([[String(customer.id), customer]]),
+      new Map([[String(vehicleId), {
+        id: vehicleId,
+        licensePlate: normalizedPlate,
+        plate: normalizedPlate,
+        brand: vehicleSnapshot.brand || appointment.brand,
+        model: vehicleSnapshot.model || appointment.model,
+      }]])
+    );
+    normalizedAppointment.plate = normalizedAppointment.plate || normalizedPlate;
+    normalizedAppointment.brand = normalizedAppointment.brand || appointment.brand;
+    normalizedAppointment.model = normalizedAppointment.model || appointment.model;
 
     setAppointments((prev) => [...prev.filter((item) => String(item.id) !== String(normalizedAppointment.id)), normalizedAppointment]);
     pushToast({
-      type: created ? 'success' : 'warning',
+      type: created && typeof created.id !== 'string' ? 'success' : 'warning',
       title: 'Randevu kaydedildi',
-      message: created ? `${appointment.plate} için randevu oluşturuldu.` : `${appointment.plate} için yerel kayıt oluşturuldu.`,
+      message: created && typeof created.id !== 'string' ? `${appointment.plate} için randevu oluşturuldu.` : `${appointment.plate} için yerel kayıt oluşturuldu.`,
     });
     return { success: true, appointment: normalizedAppointment };
-  }, [ensureCustomer]);
+  }, [customers, ensureCustomer, vehicles]); // <-- vehicles bağımlılığını eklemeyi unutma!
 
   const approveAppointment = useCallback(async (id) => {
     setAppointments((prev) => prev.map((appointment) => String(appointment.id) === String(id)
@@ -381,93 +565,76 @@ export const ServiceProvider = ({ children }) => {
   }, []);
 
   const deleteAppointment = useCallback(async (id) => {
-    await api.appointments.remove(id).catch(() => null);
+    if (isBackendCompatibleIntegerId(id)) {
+      await api.appointments.remove(id).catch(() => null);
+    }
     setAppointments((prev) => prev.filter((appointment) => String(appointment.id) !== String(id)));
-    pushToast({ type: 'info', title: 'Randevu silindi', message: 'Takvim kaydı kaldırıldı.' });
     return { success: true };
   }, []);
 
   const addJob = useCallback(async (newJob) => {
-    const plate = normalizePlate(newJob?.plate);
-    if (!plate || !isValidTurkishPlate(plate)) {
-      throw new Error('Geçersiz plaka formatı: 34 ABC 123');
+    if (isLoadingJob) {
+      throw new Error('İş emri oluşturuluyor, lütfen bekleyin...');
     }
 
-    const customer = await ensureCustomer({
-      fullName: newJob.customer,
-      phone: newJob.phone,
-      plate,
-      email: newJob.email,
-      address: newJob.address,
-      notes: newJob.notes,
-    });
-
-    let vehicle = null;
+    setIsLoadingJob(true);
     try {
-      vehicle = await ensureVehicle({
+      const plate = normalizePlate(newJob?.plate);
+      if (!plate || !isValidTurkishPlate(plate)) {
+        throw new Error('Geçersiz plaka formatı: 34 ABC 123');
+      }
+
+      const customer = await ensureCustomer({
+        fullName: newJob.customer,
+        phone: newJob.phone,
+        plate,
+        email: newJob.email,
+        address: newJob.address,
+        notes: newJob.notes,
+      });
+
+      const vehicle = await ensureVehicle({
         licensePlate: plate,
         customerId: customer.id,
         customerName: customer.fullName,
         brand: newJob.brand,
-        model: newJob.model || newJob.customModel,
-        currentKm: newJob.currentKm,
-        chassisNo: newJob.chassisNo,
-        status: newJob.status || 'IN_PROGRESS',
-        complaint: newJob.complaint,
-        appointmentId: newJob.appointmentId || null,
+        model: newJob.model || newJob.customModel
       });
-    } catch {
-      vehicle = normalizeVehicle({
-        id: Date.now(),
-        licensePlate: plate,
-        customerId: customer.id,
-        customerName: customer.fullName,
-        brand: newJob.brand,
-        model: newJob.model || newJob.customModel,
-        status: newJob.status || 'IN_PROGRESS',
-        complaint: newJob.complaint,
-      }, new Map([[String(customer.id), customer]]));
-    }
 
-    let serviceForm = null;
-    try {
-      serviceForm = await api.serviceForms.create({
-        vehicleId: vehicle.id,
-        appointmentId: newJob.appointmentId || null,
-        description: newJob.complaint || newJob.description || 'Belirtilmedi',
-        status: newJob.status || 'IN_PROGRESS',
+      const currentKm = toNumber(newJob.currentKm, 0);
+      const complaint = newJob.complaint || newJob.description || 'Belirtilmedi';
+
+      const serviceForm = { id: Date.now(), vehicleId: vehicle.id, customerId: customer.id, currentKm };
+
+      const normalizedJob = normalizeServiceForm(serviceForm, new Map([[String(customer.id), customer]]), new Map([[String(vehicle.id), { ...vehicle, customer }]]));
+      normalizedJob.plate = plate;
+      normalizedJob.customer = customer.fullName;
+      normalizedJob.brand = newJob.brand || normalizedJob.brand;
+      normalizedJob.complaint = complaint || normalizedJob.complaint;
+      normalizedJob.items = Array.isArray(newJob.items) ? newJob.items.map(normalizeServiceItem) : [];
+      normalizedJob.total = toNumber(newJob.total, normalizedJob.items.reduce((sum, item) => sum + toNumber(item.price, 0), 0));
+      const meta = deriveJobStatus(newJob.status || normalizedJob.status);
+      normalizedJob.status = meta.status;
+      normalizedJob.color = meta.color;
+      normalizedJob.statusKey = meta.key || meta.status;
+      normalizedJob.statusLabel = meta.label || meta.status;
+
+      setJobs((prev) => [...prev.filter((job) => String(job.id) !== String(normalizedJob.id)), normalizedJob]);
+      pushToast({
+        type: 'success',
+        title: 'İş emri oluşturuldu',
+        message: `${plate} plakalı araç için servis kaydı açıldı.`,
       });
-    } catch {
-      serviceForm = {
-        id: Date.now(),
-        vehicleId: vehicle.id,
-        appointmentId: newJob.appointmentId || null,
-        description: newJob.complaint || newJob.description || 'Belirtilmedi',
-        status: newJob.status || 'IN_PROGRESS',
-      };
+      return { success: true, job: normalizedJob };
+    } finally {
+      setIsLoadingJob(false);
     }
-
-    const normalizedJob = normalizeServiceForm(serviceForm, new Map([[String(customer.id), customer]]), new Map([[String(vehicle.id), { ...vehicle, customer }]]));
-    normalizedJob.plate = plate;
-    normalizedJob.customer = customer.fullName;
-    normalizedJob.brand = newJob.brand || normalizedJob.brand;
-    normalizedJob.complaint = newJob.complaint || normalizedJob.complaint;
-    normalizedJob.items = Array.isArray(newJob.items) ? newJob.items.map(normalizeServiceItem) : [];
-    normalizedJob.total = toNumber(newJob.total, normalizedJob.items.reduce((sum, item) => sum + toNumber(item.price, 0), 0));
-    normalizedJob.status = deriveJobStatus(newJob.status || normalizedJob.status).status;
-    normalizedJob.color = deriveJobStatus(newJob.status || normalizedJob.status).color;
-
-    setJobs((prev) => [...prev.filter((job) => String(job.id) !== String(normalizedJob.id)), normalizedJob]);
-    pushToast({
-      type: 'success',
-      title: 'İş emri oluşturuldu',
-      message: `${plate} plakalı araç için servis kaydı açıldı.`,
-    });
-    return { success: true, job: normalizedJob };
-  }, [ensureCustomer, ensureVehicle, isValidTurkishPlate]);
+  }, [ensureCustomer, ensureVehicle, isValidTurkishPlate, isLoadingJob]);
 
   const deleteJob = useCallback(async (id) => {
-    await api.serviceForms.remove(id).catch(() => null);
+    if (isBackendCompatibleIntegerId(id)) {
+      await api.serviceForms.remove(id).catch(() => null);
+    }
     setJobs((prev) => prev.filter((job) => String(job.id) !== String(id)));
     pushToast({ type: 'info', title: 'İş emri silindi', message: 'Servis kaydı kaldırıldı.' });
     return { success: true };
@@ -477,7 +644,7 @@ export const ServiceProvider = ({ children }) => {
     setJobs((prev) => prev.map((job) => String(job.id) === String(id) ? { ...job, ...updatedFields } : job));
 
     const currentJob = jobs.find((job) => String(job.id) === String(id));
-    if (currentJob?.serviceFormId) {
+    if (isBackendCompatibleIntegerId(currentJob?.serviceFormId)) {
       await api.serviceForms.update(currentJob.serviceFormId, {
         description: updatedFields.complaint || updatedFields.description,
         status: updatedFields.status,
@@ -494,9 +661,9 @@ export const ServiceProvider = ({ children }) => {
     if (!job) return { success: false, message: 'İş emri bulunamadı.' };
 
     const statusMeta = deriveJobStatus(status);
-    setJobs((prev) => prev.map((item) => String(item.id) === String(id) ? { ...item, status: statusMeta.status, color: statusMeta.color } : item));
+    setJobs((prev) => prev.map((item) => String(item.id) === String(id) ? { ...item, status: statusMeta.status, color: statusMeta.color, statusKey: statusMeta.key || statusMeta.status, statusLabel: statusMeta.label || statusMeta.status } : item));
 
-    if (job.serviceFormId) {
+    if (isBackendCompatibleIntegerId(job.serviceFormId)) {
       await api.serviceForms.update(job.serviceFormId, {
         status: statusMeta.status,
         description: job.complaint,
@@ -512,11 +679,11 @@ export const ServiceProvider = ({ children }) => {
       });
     }
 
-    pushToast({
+    /*pushToast({
       type: statusMeta.status === 'COMPLETED' ? 'success' : 'info',
       title: 'İş durumu güncellendi',
       message: `${job.plate} için durum ${statusMeta.status === 'COMPLETED' ? 'tamamlandı' : statusMeta.status === 'WAITING_PART' ? 'parça bekliyor' : 'işlemde'} olarak ayarlandı.`,
-    });
+    });*/
 
     return { success: true };
   }, [jobs]);
@@ -529,7 +696,7 @@ export const ServiceProvider = ({ children }) => {
 
     const normalizedItem = normalizeServiceItem(item);
 
-    if (job.serviceFormId) {
+    if (isBackendCompatibleIntegerId(job.serviceFormId)) {
       await api.serviceFormItems.create({
         serviceFormId: job.serviceFormId,
         itemName: normalizedItem.name,
@@ -558,7 +725,7 @@ export const ServiceProvider = ({ children }) => {
 
   const refreshJob = useCallback(async (jobId) => {
     const current = jobs.find((entry) => String(entry.id) === String(jobId));
-    if (!current?.serviceFormId) return current || null;
+    if (!isBackendCompatibleIntegerId(current?.serviceFormId)) return current || null;
 
     const detail = await api.serviceForms.get(current.serviceFormId).catch(() => null);
     if (!detail) return current;
@@ -662,9 +829,11 @@ export const ServiceProvider = ({ children }) => {
     logout,
     error,
     isBootstrapping,
+    isLoadingJob,
     refreshData: syncRemoteData,
     jobs,
     customers,
+    vehicles,
     appointments,
     payments,
     serviceCatalog,
@@ -699,6 +868,7 @@ export const ServiceProvider = ({ children }) => {
     deleteJob,
     error,
     isBootstrapping,
+    isLoadingJob,
     isValidTurkishPlate,
     jobs,
     login,
@@ -714,6 +884,7 @@ export const ServiceProvider = ({ children }) => {
     syncRemoteData,
     updateJob,
     user,
+    vehicles,
   ]);
 
   return (

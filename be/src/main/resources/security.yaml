@@ -55,7 +55,7 @@ security:
     - path: "/api/v1/auth/staff/create"
       method: "POST"
       description: "Personel kullanıcı oluştur"
-      roles: ["ADMIN"]
+      roles: ["ADMIN", "SUPER_ADMIN"]
 
     # ==========================================
     # CUSTOMERS
@@ -70,17 +70,17 @@ security:
       description: "Müşteri listesi (sayfalı)"
       roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/customers/[0-9]+"
+    - path: "/api/v1/customers/{id}"
       method: "GET"
       description: "Müşteri detayı getir"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/customers/[0-9]+"
+    - path: "/api/v1/customers/{id}"
       method: "PUT"
       description: "Müşteri bilgilerini güncelle"
       roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/customers/[0-9]+"
+    - path: "/api/v1/customers/{id}"
       method: "DELETE"
       description: "Müşteri sil"
       roles: ["ADMIN", "SUPER_ADMIN"]
@@ -91,24 +91,24 @@ security:
     - path: "/api/v1/vehicles"
       method: "POST"
       description: "Yeni araç oluştur"
-      roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
     - path: "/api/v1/vehicles"
       method: "GET"
       description: "Araç listesi (sayfalı)"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/vehicles/[0-9]+"
+    - path: "/api/v1/vehicles/{id}"
       method: "GET"
       description: "Araç detayı getir"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/vehicles/[0-9]+"
+    - path: "/api/v1/vehicles/{id}"
       method: "PUT"
       description: "Araç bilgilerini güncelle"
       roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/vehicles/[0-9]+"
+    - path: "/api/v1/vehicles/{id}"
       method: "DELETE"
       description: "Araç sil"
       roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
@@ -119,29 +119,29 @@ security:
     - path: "/api/v1/appointments"
       method: "POST"
       description: "Yeni randevu oluştur"
-      roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
     - path: "/api/v1/appointments"
       method: "GET"
       description: "Randevu listesi (sayfalı)"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/appointments/[0-9]+"
+    - path: "/api/v1/appointments/{id}"
       method: "GET"
       description: "Randevu detayı getir"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/appointments/[0-9]+"
+    - path: "/api/v1/appointments/{id}"
       method: "PUT"
       description: "Randevu güncelle"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/appointments/[0-9]+/cancel"
+    - path: "/api/v1/appointments/{id}/cancel"
       method: "PUT"
       description: "Randevu iptal et"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/appointments/[0-9]+"
+    - path: "/api/v1/appointments/{id}"
       method: "DELETE"
       description: "Randevu sil"
       roles: ["ADMIN", "SUPER_ADMIN"]
@@ -159,17 +159,17 @@ security:
       description: "Hizmet formu listesi (sayfalı)"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/service-forms/[0-9]+"
+    - path: "/api/v1/service-forms/{id}"
       method: "GET"
       description: "Hizmet formu detayı getir"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/service-forms/[0-9]+"
+    - path: "/api/v1/service-forms/{id}"
       method: "PUT"
       description: "Hizmet formu güncelle"
       roles: ["STAFF", "ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/service-forms/[0-9]+"
+    - path: "/api/v1/service-forms/{id}"
       method: "DELETE"
       description: "Hizmet formu sil"
       roles: ["ADMIN", "SUPER_ADMIN"]
@@ -187,19 +187,32 @@ security:
       description: "Hizmet formu öğeleri listesi (sayfalı)"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/service-form-items/[0-9]+"
+    - path: "/api/v1/service-form-items/{id}"
       method: "GET"
       description: "Hizmet formu öğesi detayı getir"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/service-form-items/[0-9]+"
+    - path: "/api/v1/service-form-items/{id}"
       method: "PUT"
       description: "Hizmet formu öğesi güncelle"
       roles: ["STAFF", "ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/service-form-items/[0-9]+"
+    - path: "/api/v1/service-form-items/{id}"
       method: "DELETE"
       description: "Hizmet formu öğesi sil"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # SERVICE CATALOG (Frontend'in kullandığı eksik endpoint)
+    # ==========================================
+    - path: "/api/v1/service-catalog"
+      method: "GET"
+      description: "Hizmet kataloğu listesi"
+      roles: ["CUSTOMER", "STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-catalog"
+      method: "POST"
+      description: "Hizmet kataloğuna yeni kayıt"
       roles: ["ADMIN", "SUPER_ADMIN"]
 
     # ==========================================
@@ -208,24 +221,24 @@ security:
     - path: "/api/v1/payments"
       method: "POST"
       description: "Yeni ödeme oluştur"
-      roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
     - path: "/api/v1/payments"
       method: "GET"
       description: "Ödeme listesi (sayfalı)"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/payments/[0-9]+"
+    - path: "/api/v1/payments/{id}"
       method: "GET"
       description: "Ödeme detayı getir"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/payments/[0-9]+"
+    - path: "/api/v1/payments/{id}"
       method: "PUT"
       description: "Ödeme güncelle"
       roles: ["ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/payments/[0-9]+/refund"
+    - path: "/api/v1/payments/{id}/refund"
       method: "POST"
       description: "Ödeme iadesi işlemi yap"
       roles: ["ADMIN", "SUPER_ADMIN"]
@@ -236,24 +249,24 @@ security:
     - path: "/api/v1/invoices"
       method: "POST"
       description: "Yeni fatura oluştur"
-      roles: ["ADMIN", "SUPER_ADMIN"]
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
 
     - path: "/api/v1/invoices"
       method: "GET"
       description: "Fatura listesi (sayfalı)"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/invoices/[0-9]+"
+    - path: "/api/v1/invoices/{id}"
       method: "GET"
       description: "Fatura detayı getir"
       roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/invoices/[0-9]+"
+    - path: "/api/v1/invoices/{id}"
       method: "PUT"
       description: "Fatura güncelle"
       roles: ["ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/invoices/[0-9]+"
+    - path: "/api/v1/invoices/{id}"
       method: "DELETE"
       description: "Fatura sil"
       roles: ["ADMIN", "SUPER_ADMIN"]
@@ -271,17 +284,17 @@ security:
       description: "Gider listesi (sayfalı)"
       roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/expenses/[0-9]+"
+    - path: "/api/v1/expenses/{id}"
       method: "GET"
       description: "Gider detayı getir"
       roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
 
-    - path: "/api/v1/expenses/[0-9]+"
+    - path: "/api/v1/expenses/{id}"
       method: "PUT"
       description: "Gider güncelle"
       roles: ["ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/expenses/[0-9]+"
+    - path: "/api/v1/expenses/{id}"
       method: "DELETE"
       description: "Gider sil"
       roles: ["ADMIN", "SUPER_ADMIN"]
@@ -289,6 +302,11 @@ security:
     # ==========================================
     # DASHBOARD
     # ==========================================
+    - path: "/api/v1/dashboard/summary"
+      method: "GET"
+      description: "Dashboard genel özet (Eksik olan)"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
     - path: "/api/v1/dashboard/statistics"
       method: "GET"
       description: "Dashboard istatistikleri getir"
@@ -322,12 +340,12 @@ security:
       description: "Kullanıcılar listesi (sayfalı)"
       roles: ["ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/users/[0-9]+"
+    - path: "/api/v1/users/{id}"
       method: "GET"
       description: "Kullanıcı detayı getir"
       roles: ["ADMIN", "SUPER_ADMIN"]
 
-    - path: "/api/v1/users/[0-9]+/deactivate"
+    - path: "/api/v1/users/{id}/deactivate"
       method: "PUT"
       description: "Kullanıcı hesabını devre dışı bırak"
       roles: ["ADMIN", "SUPER_ADMIN"]

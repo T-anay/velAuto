@@ -60,23 +60,16 @@ export default function IsEmriDetay() {
 
 
 
-    // 1. Durumların Türkçe karşılıklarını tanımlayalım
-    const statusMap = {
-        'IN_PROGRESS': 'İŞLEMDE',
-        'WAITING_PART': 'PARÇA BEKLİYOR',
-        'COMPLETED': 'TAMAMLANDI'
-    };
+    // Prefer localized label from context if available
+    const displayStatus = job.statusLabel || job.status;
 
-    // 2. Mevcut durumu map üzerinden alalım
-    const displayStatus = statusMap[job.status] || job.status;
-
-    const statusClasses = job.status === 'COMPLETED'
+    const statusClasses = (job.statusKey || job.status) === 'COMPLETED'
         ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]'
-        : job.status === 'WAITING_PART'
+        : String(job.statusKey || job.status).toUpperCase() === 'WAITING_PART'
             ? 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]'
             : 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]';
 
-    const canFinalizeJob = job.status === 'COMPLETED';
+    const canFinalizeJob = (job.statusKey || job.status) === 'COMPLETED';
 
     const addItem = async () => {
         if (!selectedOperation) {

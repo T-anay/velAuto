@@ -14,23 +14,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CustomerCreateDto {
 
-  // Identity fields (User tarafında single source of truth)
-  @NotBlank(message = "Ad boş bırakılamaz")
-  @Size(min = 2, max = 100, message = "Ad 2-100 karakter arasında olmalıdır")
-  @Pattern(regexp = "^[a-zA-ZçğıöşüÇĞİÖŞÜ\\s'-]+$", message = "Ad sadece harf, boşluk, tire ve apostrof içerebilir")
+  // Ad ve Soyad zorunlulukları (NotBlank) kaldırıldı çünkü React'ten tek parça 'customer' geliyor.
+  @Size(max = 100, message = "Ad maksimum 100 karakter olmalıdır")
   private String firstName;
 
-  @NotBlank(message = "Soyad boş bırakılamaz")
-  @Size(min = 2, max = 100, message = "Soyad 2-100 karakter arasında olmalıdır")
-  @Pattern(regexp = "^[a-zA-ZçğıöşüÇĞİÖŞÜ\\s'-]+$", message = "Soyad sadece harf, boşluk, tire ve apostrof içerebilir")
+  @Size(max = 100, message = "Soyad maksimum 100 karakter olmalıdır")
   private String lastName;
+
+  // React'ten gelen tek parça isim verisini ("Ahmet Yılmaz") yakalamak için bu alanı ekledik
+  private String customer;
 
   @NotBlank(message = "Telefon numarası boş bırakılamaz")
   @Pattern(regexp = "^[0-9\\s+()\\-]*[0-9][0-9\\s+()\\-]*$", message = "Telefon numarası geçersiz format")
   private String phone;
 
-  @NotBlank(message = "Email boş bırakılamaz")
-  @Pattern(regexp = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", message = "Geçerli bir email adresi girin")
+  // E-posta zorunluluğu ve desen (Pattern) kısıtlaması tamamen kaldırıldı
   private String email;
 
   // Commercial fields
@@ -50,5 +48,3 @@ public class CustomerCreateDto {
 
   private java.math.BigDecimal discountRate;
 }
-
-

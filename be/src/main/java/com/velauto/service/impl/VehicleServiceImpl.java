@@ -31,8 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -58,34 +57,62 @@ public class VehicleServiceImpl implements VehicleService {
       throw new BusinessException("Bu plakaya ait araç zaten mevcut", HttpStatus.CONFLICT);
     }
 
-    Brand brand = brandRepository.findById(request.getBrandId())
-        .orElseThrow(() -> new BusinessException("Marka bulunamadı", HttpStatus.NOT_FOUND));
+    String brandName = request.getBrand() != null ? request.getBrand().trim() : null;
+    if (brandName == null || brandName.isBlank()) {
+      brandName = "Diğer";
+    }
+    final String finalBrandName = brandName;
 
-    VehicleModel vehicleModel = vehicleModelRepository.findById(request.getModelId())
-        .orElseThrow(() -> new BusinessException("Model bulunamadı", HttpStatus.NOT_FOUND));
+    Brand brand = brandRepository.findByName(finalBrandName).orElseGet(() -> {
+      Brand newBrand = new Brand();
+      newBrand.setName(finalBrandName);
+      return brandRepository.save(newBrand);
+    });
+
+    String modelName = request.getModel() != null ? request.getModel().trim() : null;
+    // Model opsiyonel - boşsa "Bilinmiyor" kullan
+    if (modelName == null || modelName.isBlank()) {
+      modelName = "Bilinmiyor";
+    }
+
+    // Lambda içinde kullanmak için final variable oluştur
+    final String finalModelName = modelName;
+
+    VehicleModel vehicleModel = vehicleModelRepository.findByName(finalModelName).orElseGet(() -> {
+      VehicleModel newModel = new VehicleModel();
+      newModel.setName(finalModelName);
+      newModel.setBrand(brand);
+      return vehicleModelRepository.save(newModel);
+    });
 
     Customer customer = null;
     if (request.getCustomerId() != null) {
-      customer = customerRepository.findById(request.getCustomerId())
-          .orElseThrow(() -> new BusinessException("Müşteri bulunamadı", HttpStatus.NOT_FOUND));
+      Integer custId = request.getCustomerId().intValue();
+      customer = customerRepository.findByIdAndDeletedAtIsNull(custId)
+              .orElseThrow(() -> {
+                log.warn("Vehicle create: customer not found for id={}", custId);
+                return new BusinessException("Müşteri bulunamadı (id=" + custId + ")", HttpStatus.NOT_FOUND);
+              });
     }
 
     Vehicle vehicle = vehicleMapper.toVehicle(request, customer, brand, vehicleModel);
     Vehicle savedVehicle = vehicleRepository.save(vehicle);
 
     String customerName = (customer != null && customer.getUser() != null)
-        ? customer.getUser().getFirstName() + " " + customer.getUser().getLastName()
-        : "atanmamis";
+            ? customer.getUser().getFirstName() + " " + customer.getUser().getLastName()
+            : "atanmamis";
+
+    // Odometer kaldırıldığı için N/A yolluyoruz
     String auditDetails = String.format(
-        "Arac olusturuldu: plaka=%s, musteri=%s, kilometre=%d, olusturan=%d, zaman=%s",
-        licensePlate,
-        customerName,
-        request.getOdometer() != null ? request.getOdometer() : 0,
-        currentUserId,
-        LocalDateTime.now()
+            "Arac olusturuldu: plaka=%s, musteri=%s, marka=%s, model=%s, olusturan=%d, zaman=%s",
+            licensePlate,
+            customerName,
+            request.getBrand(),
+            request.getModel(),
+            currentUserId,
+            LocalDateTime.now()
     );
     auditLogService.log(currentUserId, "VEHICLE_CREATED", "VEHICLE", savedVehicle.getId(), auditDetails);
-
 
     return vehicleMapper.toVehicleResponse(savedVehicle);
   }
@@ -94,14 +121,13 @@ public class VehicleServiceImpl implements VehicleService {
   @Transactional
   public VehicleResponseDto updateVehicle(Integer vehicleId, VehicleUpdateDto request, Integer currentUserId) {
     Vehicle vehicle = vehicleRepository.findById(vehicleId)
-        .orElseThrow(() -> new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND));
 
     if (vehicle.getDeletedAt() != null) {
       throw new BusinessException("Silinen araç güncellenemez", HttpStatus.GONE);
     }
 
     String oldPlate = vehicle.getLicensePlate();
-    Integer oldOdometer = vehicle.getOdometer();
     Integer oldCustomerId = vehicle.getCustomer() != null ? vehicle.getCustomer().getId() : null;
 
     if (request.getLicensePlate() != null && !request.getLicensePlate().equals(oldPlate)) {
@@ -112,8 +138,12 @@ public class VehicleServiceImpl implements VehicleService {
 
     Customer newCustomer = null;
     if (request.getCustomerId() != null) {
-      newCustomer = customerRepository.findById(request.getCustomerId())
-          .orElseThrow(() -> new BusinessException("Müşteri bulunamadı", HttpStatus.NOT_FOUND));
+      Integer custId = request.getCustomerId().intValue();
+      newCustomer = customerRepository.findByIdAndDeletedAtIsNull(custId)
+              .orElseThrow(() -> {
+                log.warn("Vehicle update: customer not found for id={}", custId);
+                return new BusinessException("Müşteri bulunamadı (id=" + custId + ")", HttpStatus.NOT_FOUND);
+              });
     }
 
     vehicleMapper.updateVehicle(request, vehicle, newCustomer);
@@ -121,17 +151,16 @@ public class VehicleServiceImpl implements VehicleService {
 
     Vehicle updatedVehicle = vehicleRepository.save(vehicle);
 
+    // Odometer kısımları audit logdan çıkarıldı
     String auditDetails = String.format(
-        "Araç güncellendi: eski_plaka=%s, yeni_plaka=%s, eski_kilometre=%d, yeni_kilometre=%d, " +
-        "eski_müşteri=%d, yeni_müşteri=%d, güncelleyen=%d, zaman=%s",
-        oldPlate,
-        updatedVehicle.getLicensePlate(),
-        oldOdometer != null ? oldOdometer : 0,
-        updatedVehicle.getOdometer() != null ? updatedVehicle.getOdometer() : 0,
-        oldCustomerId != null ? oldCustomerId : 0,
-        updatedVehicle.getCustomer() != null ? updatedVehicle.getCustomer().getId() : 0,
-        currentUserId,
-        LocalDateTime.now()
+            "Araç güncellendi: eski_plaka=%s, yeni_plaka=%s, " +
+                    "eski_müşteri=%d, yeni_müşteri=%d, güncelleyen=%d, zaman=%s",
+            oldPlate,
+            updatedVehicle.getLicensePlate(),
+            oldCustomerId != null ? oldCustomerId : 0,
+            updatedVehicle.getCustomer() != null ? updatedVehicle.getCustomer().getId() : 0,
+            currentUserId,
+            LocalDateTime.now()
     );
     auditLogService.log(currentUserId, "VEHICLE_UPDATED", "VEHICLE", updatedVehicle.getId(), auditDetails);
 
@@ -142,7 +171,7 @@ public class VehicleServiceImpl implements VehicleService {
   @Transactional(readOnly = true)
   public VehicleResponseDto getVehicleById(Integer vehicleId) {
     Vehicle vehicle = vehicleRepository.findById(vehicleId)
-        .orElseThrow(() -> new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND));
 
     if (vehicle.getDeletedAt() != null) {
       throw new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND);
@@ -159,7 +188,7 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     Vehicle vehicle = vehicleRepository.findByLicensePlate(licensePlate)
-        .orElseThrow(() -> new BusinessException("Plaka ile eşleşen araç bulunamadı", HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new BusinessException("Plaka ile eşleşen araç bulunamadı", HttpStatus.NOT_FOUND));
 
     return vehicleMapper.toVehicleResponse(vehicle);
   }
@@ -172,13 +201,9 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     Vehicle vehicle = vehicleRepository.findByLicensePlateWithDetails(licensePlate)
-        .orElseThrow(() -> new BusinessException("Plaka ile eşleşen araç bulunamadı", HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new BusinessException("Plaka ile eşleşen araç bulunamadı", HttpStatus.NOT_FOUND));
 
     VehicleWithHistoryDto response = vehicleMapper.toVehicleWithHistoryResponse(vehicle);
-
-    // FUTURE NOTE: ServiceForm ve Appointment geçmişi burada eklenmelidir
-    // Bu işlem başka bir servis tarafından yapılabilir veya JOIN ile tek sorguya çekilebilir
-    // Şu an placeholder bırakılmıştır
 
     return response;
   }
@@ -186,14 +211,8 @@ public class VehicleServiceImpl implements VehicleService {
   @Override
   @Transactional(readOnly = true)
   public Page<VehicleResponseDto> getVehiclesByCustomer(Integer customerId, Pageable pageable) {
-    // GUARD CLAUSE: Müşteri bulunması
-    Customer customer = customerRepository.findById(customerId)
-        .orElseThrow(() -> new BusinessException("Müşteri bulunamadı", HttpStatus.NOT_FOUND));
-
-    // GUARD CLAUSE: Soft delete kontrol
-    if (customer.getDeletedAt() != null) {
-      throw new BusinessException("Müşteri bulunamadı", HttpStatus.NOT_FOUND);
-    }
+        Customer customer = customerRepository.findByIdAndDeletedAtIsNull(customerId)
+          .orElseThrow(() -> new BusinessException("Müşteri bulunamadı (id=" + customerId + ")", HttpStatus.NOT_FOUND));
 
     Page<Vehicle> vehicles = vehicleRepository.findByCustomer(customer, pageable);
     return vehicles.map(vehicleMapper::toVehicleResponse);
@@ -202,11 +221,9 @@ public class VehicleServiceImpl implements VehicleService {
   @Override
   @Transactional(readOnly = true)
   public Page<VehicleResponseDto> getAssignedVehicles(Integer staffId, Pageable pageable) {
-    // GUARD CLAUSE: Staff bulunması
     Staff staff = staffRepository.findById(staffId)
-        .orElseThrow(() -> new BusinessException("Staff bulunamadı", HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new BusinessException("Staff bulunamadı", HttpStatus.NOT_FOUND));
 
-    // GUARD CLAUSE: Soft delete kontrol
     if (staff.getDeletedAt() != null) {
       throw new BusinessException("Staff bulunamadı", HttpStatus.NOT_FOUND);
     }
@@ -218,7 +235,6 @@ public class VehicleServiceImpl implements VehicleService {
   @Override
   @Transactional(readOnly = true)
   public Page<VehicleResponseDto> getAllVehicles(Integer tenantId, Pageable pageable) {
-    // GUARD CLAUSE: Tenant ID validasyonu
     if (tenantId == null || tenantId <= 0) {
       throw new BusinessException("Geçersiz Tenant ID", HttpStatus.BAD_REQUEST);
     }
@@ -231,7 +247,7 @@ public class VehicleServiceImpl implements VehicleService {
   @Transactional
   public VehicleResponseDto assignStaff(Integer vehicleId, AssignStaffDto request, Integer currentUserId) {
     Vehicle vehicle = vehicleRepository.findById(vehicleId)
-        .orElseThrow(() -> new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND));
 
     if (vehicle.getDeletedAt() != null) {
       throw new BusinessException("Silinen araç güncellenemez", HttpStatus.GONE);
@@ -240,7 +256,7 @@ public class VehicleServiceImpl implements VehicleService {
     Staff staff = null;
     if (request.getStaffId() != null) {
       staff = staffRepository.findById(request.getStaffId())
-          .orElseThrow(() -> new BusinessException("Staff bulunamadı", HttpStatus.NOT_FOUND));
+              .orElseThrow(() -> new BusinessException("Staff bulunamadı", HttpStatus.NOT_FOUND));
 
       if (staff.getDeletedAt() != null) {
         throw new BusinessException("Staff bulunamadı", HttpStatus.NOT_FOUND);
@@ -255,12 +271,12 @@ public class VehicleServiceImpl implements VehicleService {
     Vehicle updatedVehicle = vehicleRepository.save(vehicle);
 
     String auditDetails = String.format(
-        "Staff atama: eski_staff=%d, yeni_staff=%d, araç_plaka=%s, atayan=%d, zaman=%s",
-        oldStaffId != null ? oldStaffId : 0,
-        staff != null ? staff.getId() : 0,
-        vehicle.getLicensePlate(),
-        currentUserId,
-        LocalDateTime.now()
+            "Staff atama: eski_staff=%d, yeni_staff=%d, araç_plaka=%s, atayan=%d, zaman=%s",
+            oldStaffId != null ? oldStaffId : 0,
+            staff != null ? staff.getId() : 0,
+            vehicle.getLicensePlate(),
+            currentUserId,
+            LocalDateTime.now()
     );
     auditLogService.log(currentUserId, "VEHICLE_STAFF_ASSIGNED", "VEHICLE", updatedVehicle.getId(), auditDetails);
 
@@ -271,7 +287,7 @@ public class VehicleServiceImpl implements VehicleService {
   @Transactional
   public void deleteVehicle(Integer vehicleId, Integer currentUserId) {
     Vehicle vehicle = vehicleRepository.findById(vehicleId)
-        .orElseThrow(() -> new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND));
+            .orElseThrow(() -> new BusinessException("Araç bulunamadı", HttpStatus.NOT_FOUND));
 
     if (vehicle.getDeletedAt() != null) {
       throw new BusinessException("Araç zaten silinmiş", HttpStatus.GONE);
@@ -283,13 +299,11 @@ public class VehicleServiceImpl implements VehicleService {
     vehicleRepository.save(vehicle);
 
     String auditDetails = String.format(
-        "Araç silindi (soft delete): araç_plaka=%s, silinen=%d, zaman=%s",
-        vehicle.getLicensePlate(),
-        currentUserId,
-        LocalDateTime.now()
+            "Araç silindi (soft delete): araç_plaka=%s, silinen=%d, zaman=%s",
+            vehicle.getLicensePlate(),
+            currentUserId,
+            LocalDateTime.now()
     );
     auditLogService.log(currentUserId, "VEHICLE_DELETED", "VEHICLE", vehicleId, auditDetails);
   }
 }
-
-

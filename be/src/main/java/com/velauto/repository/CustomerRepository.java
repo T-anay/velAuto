@@ -43,5 +43,8 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
   // Tenant'taki müşteri sayısı
   @Query("SELECT COUNT(c) FROM Customer c WHERE c.deletedAt IS NULL AND c.user.tenantId = :tenantId")
   long countByUser_TenantId(@Param("tenantId") Integer tenantId);
+
+  // ID ile arama yaparken soft-delete filtresi uygulamak için yardımcı metot
+  Optional<Customer> findByIdAndDeletedAtIsNull(Integer id);
 }
 

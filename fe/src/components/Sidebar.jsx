@@ -7,7 +7,7 @@ const menuItems = [
   { path: '/vehicle-entry', label: ' Yeni Araç Kabul' },
   { path: '/active-jobs', label: ' Aktif İşler' },
   { path: '/appointments', label: ' Takvim' },
-  { path: '/customers', label: ' Rehber' },
+  { path: '/customers', label: ' Müşteriler' },
   { path: '/cashier', label: ' Kasa & Tahsilat' },
 ];
 

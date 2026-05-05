@@ -19,13 +19,12 @@ public class Vehicle {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Integer id;
 
-  // FUTURE NOTE: Multi-tenant kontrol için tenant ID kullanılır. Müşteri seçimi opsiyoneldir
-  // Sonradan eklenebilir veya değiştirilebilir. VehicleServiceImpl'deki updateVehicle() metodundan kontrol
   @ManyToOne(optional = true)
   @JoinColumn(name = "customer_id", nullable = true)
   private Customer customer;
 
-  @Column(name = "license_plate", nullable = false, unique = true, length = 20)
+  // HATA BURADAYDI: name = "plate" yerine name = "license_plate" yapıldı.
+  @Column(name = "plate", nullable = false, unique = true, length = 20)
   private String licensePlate;
 
   @Column(name = "production_year")

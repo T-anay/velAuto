@@ -16,13 +16,13 @@ export default function PlateInput({ province, letters, digits, onChange, error 
     };
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-2xl border border-[var(--border-strong)]/20 bg-[var(--bg-main)]/25 p-4">
             <label className="text-xs text-gray-500 uppercase font-bold block">Plaka No *</label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-3 items-stretch">
                 <select
                     value={province}
                     onChange={(e) => onChange('province', e.target.value)}
-                    className="p-4 bg-[var(--bg-main)] border border-[var(--border-strong)] text-center rounded-xl text-[var(--text-primary)] focus:border-[var(--accent)] outline-none transition-all"
+                    className="min-h-[56px] p-4 bg-[var(--bg-main)] border border-[var(--border-strong)] text-center rounded-xl text-[var(--text-primary)] focus:border-[var(--accent)] outline-none transition-all"
                 >
                     {Array.from({ length: 81 }, (_, i) => (i + 1).toString().padStart(2, '0')).map((code) => (
                         <option key={code} value={code}>{code}</option>
@@ -34,7 +34,7 @@ export default function PlateInput({ province, letters, digits, onChange, error 
                     value={letters}
                     onChange={(e) => handleLetterChange(e.target.value)}
                     placeholder="ABC"
-                    className={`p-4 bg-[var(--bg-main)] border rounded-xl text-center uppercase text-[var(--text-primary)] outline-none transition-all focus:border-[var(--accent)] ${error ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.2)]' : 'border-[var(--border-strong)]'}`}
+                    className={`min-h-[56px] p-4 bg-[var(--bg-main)] border rounded-xl text-center uppercase text-[var(--text-primary)] outline-none transition-all focus:border-[var(--accent)] ${error ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.2)]' : 'border-[var(--border-strong)]'}`}
                 />
 
                 <input
@@ -45,7 +45,7 @@ export default function PlateInput({ province, letters, digits, onChange, error 
                         onChange('digits', val.slice(0, 4));
                     }}
                     placeholder="000"
-                    className={`p-4 bg-[var(--bg-main)] border rounded-xl text-center text-[var(--text-primary)] outline-none transition-all focus:border-[var(--accent)] ${error ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.2)]' : 'border-[var(--border-strong)]'}`}
+                    className={`min-h-[56px] p-4 bg-[var(--bg-main)] border rounded-xl text-center text-[var(--text-primary)] outline-none transition-all focus:border-[var(--accent)] ${error ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.2)]' : 'border-[var(--border-strong)]'}`}
                 />
             </div>
             <p className="text-[10px] text-[var(--accent)] font-bold text-right italic">

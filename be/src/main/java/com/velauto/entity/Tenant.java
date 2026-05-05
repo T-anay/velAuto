@@ -31,6 +31,7 @@ public class Tenant {
   private LocalDateTime createdAt;
 
   @Column(name = "is_active", nullable = false)
+  @Builder.Default
   private boolean isActive = true;
 }
 

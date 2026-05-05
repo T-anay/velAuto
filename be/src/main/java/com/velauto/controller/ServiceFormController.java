@@ -24,7 +24,7 @@ public class ServiceFormController {
   private final ServiceFormService serviceFormService;
 
   @PostMapping("/from-appointment/{appointmentId}")
-  @PreAuthorize("hasAnyRole('admin', 'manager', 'staff')")
+  @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'admin', 'manager', 'staff', 'customer')")
   public ResponseEntity<ServiceFormResponseDto> createFromAppointment(
       @PathVariable Integer appointmentId,
       @Valid @RequestBody ServiceFormCreateDto request,
@@ -40,7 +40,7 @@ public class ServiceFormController {
   }
 
   @PostMapping("/direct")
-  @PreAuthorize("hasAnyRole('admin', 'manager', 'staff')")
+  @PreAuthorize("hasAnyRole('admin', 'manager', 'staff', 'customer')")
   public ResponseEntity<ServiceFormResponseDto> createDirectly(
       @Valid @RequestBody ServiceFormCreateDto request,
       @AuthenticationPrincipal CustomUserDetails userDetails

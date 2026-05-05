@@ -16,7 +16,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -31,64 +35,85 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http
-        .csrf(csrf -> csrf.disable())
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .exceptionHandling(exception -> exception
-            .authenticationEntryPoint((request, response, authException) -> {
-                  response.setContentType("application/json;charset=UTF-8");
-                  response.setStatus(401);
-                  response.getWriter().write(String.format("{\"error\": \"Yetkisiz\", \"message\": \"%s\"}", Messages.UNAUTHORIZED));
-                })
-            .accessDeniedHandler((request, response, accessDeniedException) -> {
-                  response.setContentType("application/json;charset=UTF-8");
-                  response.setStatus(403);
-                  response.getWriter().write(String.format("{\"error\": \"Erişim Reddedildi\", \"message\": \"%s\"}", Messages.ACCESS_DENIED));
-                })
-        )
-        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-        .authorizeHttpRequests(auth -> {
-          List<SecurityYamlConfig.Endpoint> endpoints = securityYamlConfig.getAllEndpoints();
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exception -> exception
+                    .authenticationEntryPoint((request, response, authException) -> {
+                      response.setContentType("application/json;charset=UTF-8");
+                      response.setStatus(401);
+                      response.getWriter().write(String.format("{\"error\": \"Yetkisiz\", \"message\": \"%s\"}", Messages.UNAUTHORIZED));
+                    })
+                    .accessDeniedHandler((request, response, accessDeniedException) -> {
+                      response.setContentType("application/json;charset=UTF-8");
+                      response.setStatus(403);
+                      response.getWriter().write(String.format("{\"error\": \"Erişim Reddedildi\", \"message\": \"%s\"}", Messages.ACCESS_DENIED));
+                    })
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .authorizeHttpRequests(auth -> {
 
-          if (endpoints == null || endpoints.isEmpty()) {
-            auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/forgot-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/reset-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/appointments/public/*/book").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/admin/create").hasRole("SUPER_ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/staff/create").hasAnyRole("ADMIN", "SUPER_ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").authenticated()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
-                .anyRequest().authenticated();
-          } else {
-            endpoints.forEach(endpoint -> {
-              try {
-                String antPattern = endpoint.getPath()
-                    .replaceAll("\\{[^}]+\\}", "*");
+              // 1. ÖNCELİK: Tarayıcının CORS ön kontrol (OPTIONS) isteklerine her zaman izin ver
+              auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
 
-                String method = endpoint.getMethod() != null ? endpoint.getMethod() : "POST";
-                String[] roles = endpoint.getRoles() != null && !endpoint.getRoles().isEmpty()
-                    ? endpoint.getRoles().toArray(new String[0])
-                    : new String[0];
+              // 2. ÖNCELİK: Temel Auth rotalarını garanti altına al
+              auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll();
+              auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll();
+              auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll();
+              auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated();
 
-                HttpMethod httpMethod = HttpMethod.valueOf(method);
+              // 3. ÖNCELİK: Diğer kuralları YAML'dan okumaya devam et
+              List<SecurityYamlConfig.Endpoint> endpoints = securityYamlConfig.getAllEndpoints();
 
-                if (roles.length == 0) {
-                  auth.requestMatchers(httpMethod, antPattern).permitAll();
-                } else {
-                  auth.requestMatchers(httpMethod, antPattern).hasAnyRole(roles);
-                }
-              } catch (Exception e) {
-                log.error("Endpoint hatası: {} → {}", endpoint.getPath(), e.getMessage());
+              if (endpoints != null && !endpoints.isEmpty()) {
+                endpoints.forEach(endpoint -> {
+                  try {
+                    String antPattern = endpoint.getPath()
+                            .replaceAll("\\{[^}]+\\}", "*");
+
+                    String method = endpoint.getMethod() != null ? endpoint.getMethod() : "POST";
+                    String[] roles = endpoint.getRoles() != null && !endpoint.getRoles().isEmpty()
+                            ? endpoint.getRoles().toArray(new String[0])
+                            : new String[0];
+
+                    HttpMethod httpMethod = HttpMethod.valueOf(method);
+
+                    if (roles.length == 0) {
+                      auth.requestMatchers(httpMethod, antPattern).permitAll();
+                    } else {
+                      // DÜZELTME BURADA: hasAnyRole yerine hasAnyAuthority kullanıyoruz
+                      // ve olası 'ROLE_' krizini önlemek için iki formatı da listeye ekliyoruz
+                      String[] authorities = new String[roles.length * 2];
+                      for (int i = 0; i < roles.length; i++) {
+                        authorities[i * 2] = roles[i];                 // Örn: SUPER_ADMIN
+                        authorities[i * 2 + 1] = "ROLE_" + roles[i];   // Örn: ROLE_SUPER_ADMIN
+                      }
+                      auth.requestMatchers(httpMethod, antPattern).hasAnyAuthority(authorities);
+                    }
+                  } catch (Exception e) {
+                    log.error("Endpoint hatası: {} → {}", endpoint.getPath(), e.getMessage());
+                  }
+                });
               }
+
+              // Kalan tüm istekler için giriş yapılmış olması zorunlu
+              auth.anyRequest().authenticated();
             });
 
-            auth.anyRequest().authenticated();
-          }
-        });
-
     return http.build();
+  }
+
+  @Bean
+  public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration configuration = new CorsConfiguration();
+    configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173"));
+    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    configuration.setAllowedHeaders(Arrays.asList("authorization", "content-type", "x-auth-token"));
+    configuration.setExposedHeaders(Arrays.asList("x-auth-token"));
+    configuration.setAllowCredentials(true);
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", configuration);
+    return source;
   }
 
   @Bean

@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "users", uniqueConstraints = {
-  @UniqueConstraint(name = "uk_users_tenant_phone", columnNames = {"tenant_id", "phone"})
+        @UniqueConstraint(name = "uk_users_tenant_phone", columnNames = {"tenant_id", "phone"})
 })
 public class User {
 
@@ -22,15 +22,16 @@ public class User {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Integer id;
 
-  @Column(nullable = false, unique = true, length = 100)
+  @Column(nullable = true, unique = true, length = 100)
   private String email;
 
   @Column(name = "password_hash", nullable = false)
   private String passwordHash;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, columnDefinition = "ENUM('super_admin', 'admin', 'staff', 'customer') DEFAULT 'customer'")
-  private Role role = Role.customer;
+  // DÜZELTME: Enum değerleri ve varsayılan değer büyük harfe çevrildi
+  @Column(nullable = false, columnDefinition = "ENUM('SUPER_ADMIN', 'ADMIN', 'STAFF', 'CUSTOMER') DEFAULT 'CUSTOMER'")
+  private Role role = Role.CUSTOMER;
 
   @Column(name = "is_active", nullable = false)
   private boolean isActive = true;
@@ -63,7 +64,6 @@ public class User {
   @Column(name = "last_name", length = 100)
   private String lastName;
 
-  // Tenant-scoped unique phone, stored in normalized canonical format.
   @Column(nullable = false, length = 20)
   private String phone;
 

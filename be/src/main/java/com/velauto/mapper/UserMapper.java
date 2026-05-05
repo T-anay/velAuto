@@ -23,7 +23,7 @@ public interface UserMapper {
   @Mapping(target = "lastName", source = "request.fullName", qualifiedByName = "extractLastName")
   @Mapping(target = "phone", source = "request.phone")
   @Mapping(target = "passwordHash", source = "encodedPassword")
-  @Mapping(target = "role", constant = "customer")
+  @Mapping(target = "role", constant = "CUSTOMER") // DÜZELTİLDİ
   @Mapping(target = "active", constant = "true")
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "tenantId", ignore = true)
@@ -49,7 +49,7 @@ public interface UserMapper {
   @Mapping(target = "lastName", source = "request.fullName", qualifiedByName = "extractLastName")
   @Mapping(target = "phone", ignore = true)
   @Mapping(target = "passwordHash", source = "encodedPassword")
-  @Mapping(target = "role", constant = "admin")
+  @Mapping(target = "role", constant = "ADMIN") // DÜZELTİLDİ
   @Mapping(target = "active", constant = "true")
   @Mapping(target = "createdBy", source = "createdBy")
   @Mapping(target = "tenantId", source = "tenantId")
@@ -75,7 +75,7 @@ public interface UserMapper {
   @Mapping(target = "lastName", source = "request.fullName", qualifiedByName = "extractLastName")
   @Mapping(target = "phone", source = "request.phone")
   @Mapping(target = "passwordHash", source = "encodedPassword")
-  @Mapping(target = "role", constant = "staff")
+  @Mapping(target = "role", constant = "STAFF") // DÜZELTİLDİ
   @Mapping(target = "active", constant = "true")
   @Mapping(target = "createdBy", source = "createdBy")
   @Mapping(target = "tenantId", source = "tenantId")
@@ -112,4 +112,3 @@ public interface UserMapper {
     return spaceIndex > 0 ? trimmed.substring(spaceIndex + 1) : "";
   }
 }
-

@@ -58,6 +58,13 @@ const normalizeText = (...values) => {
   return '';
 };
 
+const normalizePhoneDigits = (phone) => {
+  if (!phone) return '';
+  let s = String(phone).replace(/\D/g, '');
+  if (s.length > 10) s = s.slice(-10);
+  return s;
+};
+
 const normalizePlate = (...values) => normalizeText(...values).toUpperCase().replace(/\s+/g, ' ').trim();
 
 const toNumber = (value, fallback = 0) => {
@@ -69,14 +76,18 @@ const deriveJobStatus = (status) => {
   const normalized = normalizeText(status, 'IN_PROGRESS').toUpperCase();
 
   if (['COMPLETED', 'TAMAMLANDI', 'DONE'].includes(normalized)) {
-    return { status: 'COMPLETED', color: 'green', label: 'TAMAMLANDI' };
+    return { status: 'COMPLETED', key: 'COMPLETED', label: 'Tamamlandı', color: 'green' };
   }
 
   if (['WAITING_PART', 'PARÇA BEKLİYOR', 'PARTS_WAITING'].includes(normalized)) {
-    return { status: 'WAITING_PART', color: 'red', label: 'PARÇA BEKLİYOR' };
+    return { status: 'WAITING_PART', key: 'WAITING_PART', label: 'Parça Bekliyor', color: 'orange' };
   }
 
-  return { status: 'IN_PROGRESS', color: 'yellow', label: 'İŞLEMDE' };
+  if (['PENDING', 'BEKLEMEDE', 'ONAY BEKLİYOR', 'ONAYLI'].includes(normalized)) {
+    return { status: 'PENDING', key: 'PENDING', label: 'Beklemede', color: 'amber' };
+  }
+
+  return { status: 'IN_PROGRESS', key: 'IN_PROGRESS', label: 'İşlemde', color: 'blue' };
 };
 
 const normalizeServiceItem = (item) => ({
@@ -90,9 +101,21 @@ const normalizeServiceItem = (item) => ({
 
 export const normalizeCustomer = (customer) => ({
   id: customer?.id,
-  name: normalizeText(customer?.fullName, customer?.name, customer?.customerName, 'Müşteri'),
-  fullName: normalizeText(customer?.fullName, customer?.name, customer?.customerName, 'Müşteri'),
-  phone: normalizeText(customer?.phone, customer?.mobile, customer?.phoneNumber),
+  name: normalizeText(
+    customer?.fullName,
+    [customer?.firstName, customer?.lastName].filter(Boolean).join(' '),
+    customer?.name,
+    customer?.customerName,
+    'Müşteri'
+  ),
+  fullName: normalizeText(
+    customer?.fullName,
+    [customer?.firstName, customer?.lastName].filter(Boolean).join(' '),
+    customer?.name,
+    customer?.customerName,
+    'Müşteri'
+  ),
+  phone: normalizePhoneDigits(normalizeText(customer?.phone, customer?.mobile, customer?.phoneNumber)),
   email: normalizeText(customer?.email),
   address: normalizeText(customer?.address),
   plate: normalizePlate(customer?.plate, customer?.licensePlate),
@@ -137,11 +160,13 @@ export const normalizeAppointment = (appointment, customerLookup = new Map(), ve
     vehicleId: appointment?.vehicleId ?? vehicle?.id ?? null,
     plate: normalizePlate(appointment?.plate, appointment?.licensePlate, vehicle?.licensePlate, vehicle?.plate),
     customer: normalizeText(appointment?.customerName, customer?.fullName, customer?.name, appointment?.customer, 'Müşteri'),
-    phone: normalizeText(appointment?.phone, customer?.phone),
+    phone: normalizePhoneDigits(normalizeText(appointment?.phone, customer?.phone)),
     service: normalizeText(appointment?.service, appointment?.description, appointment?.note, 'Bakım'),
     time: normalizeText(appointment?.appointmentDate, appointment?.time, appointment?.dateTime),
     status: approved ? 'ONAYLI' : 'ONAY BEKLİYOR',
     type: approved ? 'green' : 'red',
+    brand: normalizeText(appointment?.brand, appointment?.make, vehicle?.brand),
+    model: normalizeText(appointment?.model, appointment?.modelName, vehicle?.model),
   };
 };
 
@@ -151,6 +176,11 @@ export const normalizeServiceCatalogItem = (item) => ({
   description: normalizeText(item?.description),
   price: toNumber(item?.basePrice ?? item?.price, 0),
 });
+
+const isBackendCompatibleIntegerId = (id) => {
+  const numericId = Number(id);
+  return Number.isInteger(numericId) && numericId > 0 && numericId <= 2147483647;
+};
 
 export const normalizeServiceForm = (form, customerLookup = new Map(), vehicleLookup = new Map()) => {
   const vehicle = vehicleLookup.get(String(form?.vehicleId ?? form?.vehicle?.id ?? '')) || form?.vehicle || null;
@@ -167,7 +197,7 @@ export const normalizeServiceForm = (form, customerLookup = new Map(), vehicleLo
 
   return {
     id: form?.id,
-    serviceFormId: form?.id,
+    serviceFormId: isBackendCompatibleIntegerId(form?.id) ? form.id : null,
     customerId: form?.customerId ?? customer?.id ?? null,
     vehicleId: form?.vehicleId ?? vehicle?.id ?? null,
     appointmentId: form?.appointmentId ?? null,
@@ -336,6 +366,7 @@ export const api = {
   customers: {
     list: (params = '') => request(`/api/v1/customers${params}`),
     get: (id) => request(`/api/v1/customers/${id}`),
+    getByPhone: (phone) => request(`/api/v1/customers/phone/${encodeURIComponent(phone)}`),
     create: (payload) => request('/api/v1/customers', { method: 'POST', body: payload }),
     update: (id, payload) => request(`/api/v1/customers/${id}`, { method: 'PUT', body: payload }),
     remove: (id) => request(`/api/v1/customers/${id}`, { method: 'DELETE' }),
@@ -365,7 +396,7 @@ export const api = {
   serviceForms: {
     list: (params = '') => request(`/api/v1/service-forms${params}`),
     get: (id) => request(`/api/v1/service-forms/${id}`),
-    create: (payload) => request('/api/v1/service-forms', { method: 'POST', body: payload }),
+    create: (payload) => request('/api/v1/service-forms/direct', { method: 'POST', body: payload }),
     update: (id, payload) => request(`/api/v1/service-forms/${id}`, { method: 'PUT', body: payload }),
     remove: (id) => request(`/api/v1/service-forms/${id}`, { method: 'DELETE' }),
   },

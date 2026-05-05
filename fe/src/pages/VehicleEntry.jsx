@@ -7,7 +7,21 @@ import { carBrands } from '../constants/carData';
 export default function VehicleEntry() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { addJob, isValidTurkishPlate } = useService();
+    const { addJob, isValidTurkishPlate, isLoadingJob } = useService();
+
+    const parsePlateParts = (plateValue) => {
+        if (!plateValue) return null;
+
+        const normalizedPlate = String(plateValue).toUpperCase().replace(/\s+/g, ' ').trim();
+        const matched = normalizedPlate.match(/^(\d{2})\s*([A-ZÇĞİÖŞÜ]{1,3})\s*(\d{2,4})$/i);
+        if (!matched) return null;
+
+        return {
+            province: matched[1],
+            letters: matched[2],
+            digits: matched[3],
+        };
+    };
 
     const [formData, setFormData] = useState(() => {
         let initial = {
@@ -17,16 +31,16 @@ export default function VehicleEntry() {
         };
 
         if (location.state) {
-            if (location.state.plate) {
-                const parts = location.state.plate.split(' ');
-                if (parts.length === 3) {
-                    initial.province = parts[0];
-                    initial.letters = parts[1];
-                    initial.digits = parts[2];
-                }
+            const plateParts = parsePlateParts(location.state.plate || location.state.licensePlate);
+            if (plateParts) {
+                initial.province = plateParts.province;
+                initial.letters = plateParts.letters;
+                initial.digits = plateParts.digits;
             }
             if (location.state.customer) initial.customer = location.state.customer;
             if (location.state.phone) initial.phone = location.state.phone;
+            if (location.state.brand) initial.brand = location.state.brand;
+            if (location.state.model) initial.model = location.state.model;
             if (location.state.service) initial.complaint = location.state.service;
         }
         return initial;
@@ -226,10 +240,10 @@ export default function VehicleEntry() {
 
                         <button
                             onClick={handleSubmit}
-                            disabled={isSaving}
+                            disabled={isSaving || isLoadingJob}
                             className="w-full mt-8 p-6 bg-[var(--accent)] text-white font-black rounded-xl hover:brightness-110 active:scale-[0.98] transition-all uppercase tracking-widest text-lg shadow-[0_10px_20px_rgba(37,99,235,0.18)] disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            {isSaving ? 'KAYDEDİLİYOR...' : 'İş Emrini Başlat'}
+                            {isSaving || isLoadingJob ? 'KAYDEDİLİYOR...' : 'İş Emrini Başlat'}
                         </button>
                     </div>
                 </div>

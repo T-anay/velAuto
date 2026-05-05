@@ -155,7 +155,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     authenticationManager.authenticate(
-        new UsernamePasswordAuthenticationToken(email, password)
+            new UsernamePasswordAuthenticationToken(email, password)
     );
 
     RefreshToken refreshToken = refreshTokenService.createOrRotate(user);
@@ -171,7 +171,7 @@ public class AuthServiceImpl implements AuthService {
   @Transactional
   public AuthResponseDto createAdmin(AdminCreateDto request, Integer currentUserId) {
     User currentUser = findActiveUserById(currentUserId);
-    validateUserHasRole(currentUser, Role.super_admin);
+    validateUserHasRole(currentUser, Role.SUPER_ADMIN); // DÜZELTİLDİ
 
     String email = request.getEmail();
     validateEmailNotExists(email);
@@ -191,7 +191,7 @@ public class AuthServiceImpl implements AuthService {
   @Transactional
   public AuthResponseDto createStaff(StaffCreateDto request, Integer currentUserId) {
     User currentUser = findActiveUserById(currentUserId);
-    validateUserHasRole(currentUser, Role.admin, Role.super_admin);
+    validateUserHasRole(currentUser, Role.ADMIN, Role.SUPER_ADMIN); // DÜZELTİLDİ
 
     String email = request.getEmail();
     validateEmailNotExists(email);
@@ -199,9 +199,9 @@ public class AuthServiceImpl implements AuthService {
     String encodedPassword = passwordEncoder.encode(request.getPassword());
 
     Role currentUserRole = currentUser.getRole();
-    Integer tenantId = (currentUserRole == Role.super_admin)
-        ? currentUserId
-        : currentUser.getTenantId();
+    Integer tenantId = (currentUserRole == Role.SUPER_ADMIN) // DÜZELTİLDİ
+            ? currentUserId
+            : currentUser.getTenantId();
 
     User staffUser = userMapper.toStaffUser(request, encodedPassword, currentUserId, tenantId);
     User savedStaffUser = userRepository.save(staffUser);
@@ -325,4 +325,3 @@ public class AuthServiceImpl implements AuthService {
     auditLogService.log(currentUserId, "USER_LOGGED_OUT", "USER", currentUserId);
   }
 }
-

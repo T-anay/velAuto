@@ -4,9 +4,11 @@ import com.velauto.dto.AppointmentCreateDto;
 import com.velauto.dto.AppointmentResponseDto;
 import com.velauto.dto.AppointmentUpdateDto;
 import com.velauto.entity.Appointment;
+import org.mapstruct.BeanMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 @Mapper(componentModel = "spring")
 public interface AppointmentMapper {
@@ -32,6 +34,7 @@ public interface AppointmentMapper {
   @Mapping(target = "updatedAt", ignore = true)
   @Mapping(target = "deletedAt", ignore = true)
   @Mapping(target = "deletedBy", ignore = true)
+  @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
   void updateAppointment(AppointmentUpdateDto dto, @MappingTarget Appointment appointment);
 
   AppointmentResponseDto toAppointmentResponseDto(Appointment appointment);

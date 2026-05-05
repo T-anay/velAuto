@@ -96,6 +96,8 @@ export default function AppointmentsAdmin() {
         complaint: appointment.service,
         status: 'IN_PROGRESS',
         appointmentId: appointment.id,
+        brand: appointment.brand,
+        model: appointment.model,
       });
       setOverride(appointment.id, 'CONVERTED');
       pushToast({ type: 'success', title: 'İş emrine aktarıldı', message: `${appointment.plate} için servis kaydı oluşturuldu.` });
@@ -148,15 +150,14 @@ export default function AppointmentsAdmin() {
                   </div>
 
                   <div className="space-y-2 min-w-[220px]">
-                    <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${
-                      status === 'APPROVED'
+                    <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${status === 'APPROVED'
                         ? 'border-[var(--success)]/40 text-[var(--success)] bg-[var(--success)]/10'
                         : status === 'CANCELLED'
                           ? 'border-[var(--danger)]/40 text-[var(--danger)] bg-[var(--danger)]/10'
                           : status === 'CONVERTED'
                             ? 'border-[var(--accent)]/40 text-[var(--accent)] bg-[var(--accent)]/10'
                             : 'border-[var(--border-soft)] text-[var(--text-secondary)] bg-white'
-                    }`}>
+                      }`}>
                       {status === 'PENDING' ? 'Bekliyor' : status === 'APPROVED' ? 'Onaylı' : status === 'CANCELLED' ? 'İptal' : 'İş Emrine Aktarıldı'}
                     </span>
 

@@ -51,73 +51,78 @@ public class AppointmentServiceImpl implements AppointmentService {
 
   @Override
   public AppointmentResponseDto createAppointment(
-      AppointmentCreateDto request,
-      Integer tenantId,
-      Integer userId
+          AppointmentCreateDto request,
+          Integer tenantId,
+          Integer userId
   ) {
-    // Guard Clause: Validate input
     if (request == null) {
       throw new BusinessException(Messages.APPOINTMENT_REQUEST_INVALID);
     }
 
-    // Fetch customer - No Optional chaining
-    Optional<Customer> customerOptional = customerRepository.findById(request.getCustomerId());
+    Integer reqCustId = request.getCustomerId();
+    Optional<Customer> customerOptional = customerRepository.findByIdAndDeletedAtIsNull(reqCustId);
     if (customerOptional.isEmpty()) {
+      log.warn("Appointment create: customer not found for id={}", reqCustId);
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
     Customer customer = customerOptional.get();
 
-    // Guard Clause: Customer deleted?
-    if (customer.getDeletedAt() != null) {
-      throw new BusinessException(Messages.CUSTOMER_DELETED);
-    }
-
-    // Guard Clause: Customer belongs to tenant?
+    // DÜZELTME: Müşterinin tenantId'si null olabilir (yeni yaratılmış olabilir)
+    // Eğer tenantId null ise, randevu eklenen dükkanın (tenantId) yetkisini otomatik devralsın.
     Integer customerTenantId = customer.getUser() != null ? customer.getUser().getTenantId() : null;
-    if (customerTenantId == null || !customerTenantId.equals(tenantId)) {
-      throw new BusinessException(Messages.UNAUTHORIZED_ACCESS);
+    if (customerTenantId != null && !customerTenantId.equals(tenantId)) {
+      // İşlemi yapan kullanıcı SUPER_ADMIN ise her türlü tenant'a işlem yapabilsin
+      User currentUser = userRepository.findById(userId).orElse(null);
+      boolean isSuperAdmin = currentUser != null && com.velauto.entity.enums.Role.SUPER_ADMIN.equals(currentUser.getRole());
+
+      if (!isSuperAdmin) {
+        throw new BusinessException(Messages.UNAUTHORIZED_ACCESS);
+      }
     }
 
-    // Fetch vehicle - No Optional chaining
     Optional<Vehicle> vehicleOptional = vehicleRepository.findById(request.getVehicleId());
     if (vehicleOptional.isEmpty()) {
       throw new BusinessException(Messages.VEHICLE_NOT_FOUND);
     }
     Vehicle vehicle = vehicleOptional.get();
 
-    // Guard Clause: Vehicle deleted?
     if (vehicle.getDeletedAt() != null) {
       throw new BusinessException(Messages.VEHICLE_DELETED);
     }
 
-    // Guard Clause: Vehicle belongs to same customer?
     Integer vehicleCustomerId = vehicle.getCustomer() != null ? vehicle.getCustomer().getId() : null;
     if (vehicleCustomerId == null || !vehicleCustomerId.equals(request.getCustomerId())) {
       throw new BusinessException(Messages.VEHICLE_CUSTOMER_MISMATCH);
     }
 
-    // Guard Clause: Appointment date validation
     LocalDateTime now = LocalDateTime.now();
-    if (request.getAppointmentDate().isBefore(now)) {
+    // Frontedden bazen saniyesiz aynı saatte istek gelebilir, "Geçmiş zaman" hatasına düşmemek için 1-2 dakikalık tolerans eklenebilir.
+    // Eğer randevu tarihi şu andan "çok" önceyse hata fırlat (tolerans: 5 dakika)
+    if (request.getAppointmentDate().isBefore(now.minusMinutes(5))) {
       throw new BusinessException(Messages.APPOINTMENT_DATE_INVALID);
     }
 
-    // Map DTO to Entity
     Appointment appointment = appointmentMapper.toAppointment(request);
+
+    // Status eğer DTO'dan gelmezse (null ise) varsayılan olarak atayalım (Önceki 500 hatalarını engeller)
+    if (appointment.getStatus() == null) {
+      appointment.setStatus(com.velauto.entity.enums.AppointmentStatus.PENDING);
+    }
+
+
+
     appointment.setTenantId(tenantId);
     appointment.setCreatedBy(userId);
     appointment.setCreatedAt(now);
 
-    // Save appointment
     Appointment savedAppointment = appointmentRepository.save(appointment);
 
-    // Audit log - Single responsibility per line
     String auditDetails = String.format(
-        "Randevu oluşturuldu: customerID=%d, vehicleID=%d, date=%s, notes=%s",
-        appointment.getCustomerId(),
-        appointment.getVehicleId(),
-        appointment.getAppointmentDate(),
-        appointment.getNotes()
+            "Randevu oluşturuldu: customerID=%d, vehicleID=%d, date=%s, notes=%s",
+            appointment.getCustomerId(),
+            appointment.getVehicleId(),
+            appointment.getAppointmentDate(),
+            appointment.getNotes()
     );
     auditLogService.log(userId, "APPOINTMENT_CREATED", "APPOINTMENT", savedAppointment.getId(), auditDetails);
 
@@ -127,15 +132,13 @@ public class AppointmentServiceImpl implements AppointmentService {
   @Override
   @Transactional(readOnly = true)
   public AppointmentResponseDto getAppointmentById(
-      Integer appointmentId,
-      Integer tenantId
+          Integer appointmentId,
+          Integer tenantId
   ) {
-    // Guard Clause: Validate input
     if (appointmentId == null || tenantId == null) {
       throw new BusinessException(Messages.APPOINTMENT_NOT_FOUND);
     }
 
-    // Fetch appointment - No Optional chaining
     Optional<Appointment> appointmentOptional = appointmentRepository.findByIdAndTenantId(appointmentId, tenantId);
     if (appointmentOptional.isEmpty()) {
       throw new BusinessException(Messages.APPOINTMENT_NOT_FOUND);
@@ -148,10 +151,9 @@ public class AppointmentServiceImpl implements AppointmentService {
   @Override
   @Transactional(readOnly = true)
   public Page<AppointmentResponseDto> getAppointmentsByTenant(
-      Integer tenantId,
-      Pageable pageable
+          Integer tenantId,
+          Pageable pageable
   ) {
-    // Guard Clause: Validate input
     if (tenantId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
@@ -163,25 +165,23 @@ public class AppointmentServiceImpl implements AppointmentService {
   @Override
   @Transactional(readOnly = true)
   public Page<AppointmentResponseDto> getAppointmentsByCustomer(
-      Integer customerId,
-      Integer tenantId,
-      Pageable pageable
+          Integer customerId,
+          Integer tenantId,
+          Pageable pageable
   ) {
-    // Guard Clause: Validate input
     if (customerId == null || tenantId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    // Fetch customer - No Optional chaining
-    Optional<Customer> customerOptional = customerRepository.findById(customerId);
+    Optional<Customer> customerOptional = customerRepository.findByIdAndDeletedAtIsNull(customerId);
     if (customerOptional.isEmpty()) {
+      log.warn("getAppointmentsByCustomer: customer not found for id={}", customerId);
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
 
-    // Guard Clause: Customer belongs to tenant?
     Customer customer = customerOptional.get();
     Integer customerTenantId = customer.getUser() != null ? customer.getUser().getTenantId() : null;
-    if (customerTenantId == null || !customerTenantId.equals(tenantId)) {
+    if (customerTenantId != null && !customerTenantId.equals(tenantId)) {
       throw new BusinessException(Messages.UNAUTHORIZED_ACCESS);
     }
 
@@ -192,22 +192,19 @@ public class AppointmentServiceImpl implements AppointmentService {
   @Override
   @Transactional(readOnly = true)
   public Page<AppointmentResponseDto> getAppointmentsByVehicle(
-      Integer vehicleId,
-      Integer tenantId,
-      Pageable pageable
+          Integer vehicleId,
+          Integer tenantId,
+          Pageable pageable
   ) {
-    // Guard Clause: Validate input
     if (vehicleId == null || tenantId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    // Fetch vehicle - No Optional chaining
     Optional<Vehicle> vehicleOptional = vehicleRepository.findById(vehicleId);
     if (vehicleOptional.isEmpty()) {
       throw new BusinessException(Messages.VEHICLE_NOT_FOUND);
     }
 
-    // Guard Clause: Vehicle belongs to tenant's customer?
     Vehicle vehicle = vehicleOptional.get();
     Integer vehicleCustomerId = vehicle.getCustomer() != null ? vehicle.getCustomer().getId() : null;
 
@@ -215,13 +212,14 @@ public class AppointmentServiceImpl implements AppointmentService {
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
 
-    Optional<Customer> customerOptional = customerRepository.findById(vehicleCustomerId);
+    Optional<Customer> customerOptional = customerRepository.findByIdAndDeletedAtIsNull(vehicleCustomerId);
     if (customerOptional.isEmpty()) {
+      log.warn("getAppointmentsByVehicle: customer not found for id={}", vehicleCustomerId);
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
     Customer customer = customerOptional.get();
     Integer customerTenantId = customer.getUser() != null ? customer.getUser().getTenantId() : null;
-    if (customerTenantId == null || !customerTenantId.equals(tenantId)) {
+    if (customerTenantId != null && !customerTenantId.equals(tenantId)) {
       throw new BusinessException(Messages.UNAUTHORIZED_ACCESS);
     }
 
@@ -232,11 +230,10 @@ public class AppointmentServiceImpl implements AppointmentService {
   @Override
   @Transactional(readOnly = true)
   public List<AppointmentResponseDto> getAppointmentsByDateRange(
-      Integer tenantId,
-      LocalDateTime startDate,
-      LocalDateTime endDate
+          Integer tenantId,
+          LocalDateTime startDate,
+          LocalDateTime endDate
   ) {
-    // Guard Clause: Validate input
     if (tenantId == null || startDate == null || endDate == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
@@ -247,23 +244,21 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     List<Appointment> appointments = appointmentRepository.findByTenantIdAndDateRange(tenantId, startDate, endDate);
     return appointments.stream()
-        .map(appointmentMapper::toAppointmentResponseDto)
-        .toList();
+            .map(appointmentMapper::toAppointmentResponseDto)
+            .toList();
   }
 
   @Override
   public AppointmentResponseDto updateAppointment(
-      Integer appointmentId,
-      AppointmentUpdateDto request,
-      Integer tenantId,
-      Integer userId
+          Integer appointmentId,
+          AppointmentUpdateDto request,
+          Integer tenantId,
+          Integer userId
   ) {
-    // Guard Clause: Validate input
     if (appointmentId == null || request == null || tenantId == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    // Fetch appointment - No Optional chaining
     Optional<Appointment> appointmentOptional = appointmentRepository.findByIdAndTenantId(appointmentId, tenantId);
     if (appointmentOptional.isEmpty()) {
       throw new BusinessException(Messages.APPOINTMENT_NOT_FOUND);
@@ -271,31 +266,27 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     Appointment appointment = appointmentOptional.get();
 
-    // Guard Clause: Appointment deleted?
     if (appointment.getDeletedAt() != null) {
       throw new BusinessException(Messages.APPOINTMENT_DELETED);
     }
 
-    // Store old values for audit - Single responsibility
     String oldStatus = appointment.getStatus().toString();
     LocalDateTime oldDate = appointment.getAppointmentDate();
 
-    // Update appointment
     appointmentMapper.updateAppointment(request, appointment);
     appointment.setUpdatedBy(userId);
     appointment.setUpdatedAt(LocalDateTime.now());
 
     Appointment updatedAppointment = appointmentRepository.save(appointment);
 
-    // Audit log - Single responsibility per line
     String newStatus = updatedAppointment.getStatus().toString();
     String auditDetails = String.format(
-        "Randevu güncellendi: status=%s→%s, date=%s→%s, notes=%s",
-        oldStatus,
-        newStatus,
-        oldDate,
-        updatedAppointment.getAppointmentDate(),
-        updatedAppointment.getNotes()
+            "Randevu güncellendi: status=%s→%s, date=%s→%s, notes=%s",
+            oldStatus,
+            newStatus,
+            oldDate,
+            updatedAppointment.getAppointmentDate(),
+            updatedAppointment.getNotes()
     );
     auditLogService.log(userId, "APPOINTMENT_UPDATED", "APPOINTMENT", updatedAppointment.getId(), auditDetails);
 
@@ -304,16 +295,14 @@ public class AppointmentServiceImpl implements AppointmentService {
 
   @Override
   public void deleteAppointment(
-      Integer appointmentId,
-      Integer tenantId,
-      Integer userId
+          Integer appointmentId,
+          Integer tenantId,
+          Integer userId
   ) {
-    // Guard Clause: Validate input
     if (appointmentId == null || tenantId == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    // Fetch appointment - No Optional chaining
     Optional<Appointment> appointmentOptional = appointmentRepository.findByIdAndTenantId(appointmentId, tenantId);
     if (appointmentOptional.isEmpty()) {
       throw new BusinessException(Messages.APPOINTMENT_NOT_FOUND);
@@ -321,23 +310,20 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     Appointment appointment = appointmentOptional.get();
 
-    // Guard Clause: Already deleted?
     if (appointment.getDeletedAt() != null) {
       throw new BusinessException(Messages.APPOINTMENT_ALREADY_DELETED);
     }
 
-    // Soft delete - Single responsibility
     LocalDateTime now = LocalDateTime.now();
     appointment.setDeletedAt(now);
     appointment.setDeletedBy(userId);
 
     appointmentRepository.save(appointment);
 
-    // Audit log
     String auditDetails = String.format(
-        "Randevu silindi (soft delete): ID=%d, status=%s",
-        appointment.getId(),
-        appointment.getStatus()
+            "Randevu silindi (soft delete): ID=%d, status=%s",
+            appointment.getId(),
+            appointment.getStatus()
     );
     auditLogService.log(userId, "APPOINTMENT_DELETED", "APPOINTMENT", appointmentId, auditDetails);
   }
@@ -345,10 +331,9 @@ public class AppointmentServiceImpl implements AppointmentService {
   @Override
   @Transactional
   public AppointmentResponseDto bookOnlineAppointment(
-      com.velauto.dto.PublicAppointmentRequestDto request,
-      Integer tenantId
+          com.velauto.dto.PublicAppointmentRequestDto request,
+          Integer tenantId
   ) {
-    // STEP 1: Input validation
     if (request == null || request.getPhone() == null || request.getPhone().isBlank()) {
       throw new BusinessException("Telefon numarası gerekli");
     }
@@ -362,7 +347,6 @@ public class AppointmentServiceImpl implements AppointmentService {
       throw new BusinessException("Plaka gerekli");
     }
 
-    // STEP 2: Phone normalizasyon ve validation
     String normalizedPhone;
     try {
       normalizedPhone = PhoneUtils.normalize(request.getPhone());
@@ -373,11 +357,9 @@ public class AppointmentServiceImpl implements AppointmentService {
       throw new BusinessException("Telefon numarası normalize edilemedi");
     }
 
-    // STEP 3: XSS Protection - Input sanitization
     String sanitizedFirstName = XssUtils.sanitize(request.getFirstName());
     String sanitizedLastName = XssUtils.sanitize(request.getLastName());
 
-    // STEP 4: Phone ve tenant ile müşteri ara
     Optional<User> existingUserOptional = userRepository.findByPhoneAndTenantId(normalizedPhone, tenantId);
 
     Customer customer;
@@ -385,36 +367,33 @@ public class AppointmentServiceImpl implements AppointmentService {
       User existingUser = existingUserOptional.get();
       if (existingUser.getDeletedAt() == null) {
         customer = customerRepository.findByUser(existingUser)
-            .orElseThrow(() -> new BusinessException("Müşteri profili bulunamadı"));
+                .orElseThrow(() -> new BusinessException("Müşteri profili bulunamadı"));
       } else {
         throw new BusinessException("Bu telefon numarası silinmiştir");
       }
     } else {
-      // STEP 5: Unique email generation (UUID + random)
       String uniqueEmail = generateUniqueEmail();
 
       com.velauto.dto.CustomerCreateDto customerCreateDto = com.velauto.dto.CustomerCreateDto.builder()
-          .firstName(sanitizedFirstName)
-          .lastName(sanitizedLastName)
-          .phone(normalizedPhone)
-          .email(uniqueEmail)
-          .address("")
-          .customerType("INDIVIDUAL")
-          .build();
+              .firstName(sanitizedFirstName)
+              .lastName(sanitizedLastName)
+              .phone(normalizedPhone)
+              .email(uniqueEmail)
+              .address("")
+              .customerType("INDIVIDUAL")
+              .build();
 
       customer = createInternalCustomer(customerCreateDto, tenantId);
     }
 
-    // STEP 6: Plate normalizasyon ve validation
     String normalizedPlate = request.getPlate()
-        .replaceAll("[^A-Z0-9]", "")
-        .toUpperCase();
+            .replaceAll("[^A-Z0-9]", "")
+            .toUpperCase();
 
     if (normalizedPlate.isBlank() || normalizedPlate.length() < 2) {
       throw new BusinessException("Geçersiz plaka formatı");
     }
 
-    // STEP 7: Vehicle ara veya oluştur
     Optional<Vehicle> vehicleOptional = vehicleRepository.findByCustomerIdAndPlate(customer.getId(), normalizedPlate);
 
     Vehicle vehicle;
@@ -428,16 +407,13 @@ public class AppointmentServiceImpl implements AppointmentService {
       vehicle = vehicleRepository.save(vehicle);
     }
 
-    // STEP 8: File upload with validation
     String imageUrl = null;
     if (request.getDamageImage() != null && !request.getDamageImage().isEmpty()) {
-      // File size validation (5MB max)
       long maxFileSize = 5 * 1024 * 1024;
       if (request.getDamageImage().getSize() > maxFileSize) {
         throw new BusinessException("Dosya çok büyük (max 5MB)");
       }
 
-      // File type validation
       String contentType = request.getDamageImage().getContentType();
       if (!isValidImageType(contentType)) {
         throw new BusinessException("Sadece PNG ve JPG dosyaları desteklenir");
@@ -453,41 +429,39 @@ public class AppointmentServiceImpl implements AppointmentService {
       }
     }
 
-    // STEP 9: Appointment oluştur
     Appointment appointment = Appointment.builder()
-        .customerId(customer.getId())
-        .vehicleId(vehicle.getId())
-        .status(com.velauto.entity.enums.AppointmentStatus.PENDING)
-        .tenantId(tenantId)
-        .createdAt(LocalDateTime.now())
-        .build();
+            .customerId(customer.getId())
+            .vehicleId(vehicle.getId())
+            .status(com.velauto.entity.enums.AppointmentStatus.PENDING)
+            .tenantId(tenantId)
+            .createdAt(LocalDateTime.now())
+            .build();
 
     Appointment savedAppointment = appointmentRepository.save(appointment);
 
-    // STEP 10: Audit logging
     String auditDetails = String.format(
-        "Online randevu: phone=%s, plate=%s, image=%s",
-        normalizedPhone,
-        normalizedPlate,
-        imageUrl != null ? "uploaded" : "none"
+            "Online randevu: phone=%s, plate=%s, image=%s",
+            normalizedPhone,
+            normalizedPlate,
+            imageUrl != null ? "uploaded" : "none"
     );
     auditLogService.log(customer.getUser().getId(), "ONLINE_APPOINTMENT_CREATED", "APPOINTMENT",
-        savedAppointment.getId(), auditDetails);
+            savedAppointment.getId(), auditDetails);
 
     return appointmentMapper.toAppointmentResponseDto(savedAppointment);
   }
 
   private String generateUniqueEmail() {
     return java.util.UUID.randomUUID().toString().substring(0, 8) +
-           "_" + System.currentTimeMillis() +
-           "@velauto-temp.local";
+            "_" + System.currentTimeMillis() +
+            "@velauto-temp.local";
   }
 
   private boolean isValidImageType(String contentType) {
     return contentType != null &&
-           (contentType.equals("image/png") ||
-            contentType.equals("image/jpeg") ||
-            contentType.equals("image/jpg"));
+            (contentType.equals("image/png") ||
+                    contentType.equals("image/jpeg") ||
+                    contentType.equals("image/jpg"));
   }
 
   private String sanitizeFileName(String fileName) {
@@ -496,30 +470,26 @@ public class AppointmentServiceImpl implements AppointmentService {
   }
 
   private Customer createInternalCustomer(
-      com.velauto.dto.CustomerCreateDto request,
-      Integer tenantId
+          com.velauto.dto.CustomerCreateDto request,
+          Integer tenantId
   ) {
-    // Secure password generation (12+ chars, mixed case, digits, special chars)
     String rawPassword = generateSecurePassword();
 
-    // Create User with proper validation
     User newUser = new User();
     newUser.setEmail(request.getEmail());
     newUser.setFirstName(request.getFirstName());
     newUser.setLastName(request.getLastName());
     newUser.setPhone(request.getPhone());
     newUser.setPasswordHash(passwordEncoder.encode(rawPassword));
-    newUser.setRole(com.velauto.entity.enums.Role.customer);
+    newUser.setRole(com.velauto.entity.enums.Role.CUSTOMER);
     newUser.setActive(true);
     newUser.setTenantId(tenantId);
     newUser.setCreatedAt(LocalDateTime.now());
 
     User savedUser = userRepository.save(newUser);
 
-    // Send welcome notification
     notificationService.sendWelcomePassword(newUser.getPhone(), rawPassword);
 
-    // Create Customer with proper values
     Customer newCustomer = new Customer();
     newCustomer.setUser(savedUser);
     newCustomer.setCustomerType(com.velauto.entity.enums.CustomerType.INDIVIDUAL);

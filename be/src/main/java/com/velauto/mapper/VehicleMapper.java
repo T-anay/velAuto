@@ -10,14 +10,16 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring", uses = {CustomerMapper.class, StaffMapper.class})
 public interface VehicleMapper {
 
-  // ...existing code...
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "customer", source = "customer")
   @Mapping(target = "licensePlate", source = "request.licensePlate")
-  @Mapping(target = "year", source = "request.year")
-  @Mapping(target = "chassisNumber", source = "request.chassisNumber")
-  @Mapping(target = "color", source = "request.color")
-  @Mapping(target = "odometer", source = "request.odometer")
+
+  // Sadeleştirme: DTO'dan kestiğimiz detay alanlarını artık yoksayıyoruz
+  @Mapping(target = "year", ignore = true)
+  @Mapping(target = "chassisNumber", ignore = true)
+  @Mapping(target = "color", ignore = true)
+  @Mapping(target = "odometer", ignore = true)
+
   @Mapping(target = "brand", source = "brand")
   @Mapping(target = "vehicleModel", source = "vehicleModel")
   @Mapping(target = "assignedStaff", ignore = true)
@@ -27,10 +29,10 @@ public interface VehicleMapper {
   @Mapping(target = "deletedAt", ignore = true)
   @Mapping(target = "deletedBy", ignore = true)
   Vehicle toVehicle(
-      VehicleCreateDto request,
-      Customer customer,
-      Brand brand,
-      VehicleModel vehicleModel);
+          VehicleCreateDto request,
+          Customer customer,
+          Brand brand,
+          VehicleModel vehicleModel);
 
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "brand", ignore = true)
@@ -74,11 +76,9 @@ public interface VehicleMapper {
       return "N/A";
     }
     String first = vehicle.getCustomer().getUser().getFirstName() != null ?
-        vehicle.getCustomer().getUser().getFirstName() : "";
+            vehicle.getCustomer().getUser().getFirstName() : "";
     String last = vehicle.getCustomer().getUser().getLastName() != null ?
-        vehicle.getCustomer().getUser().getLastName() : "";
+            vehicle.getCustomer().getUser().getLastName() : "";
     return (first + " " + last).trim();
   }
 }
-
-

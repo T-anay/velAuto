@@ -31,10 +31,10 @@ export default function Profile() {
   const tenantName = user?.raw?.tenantName || user?.raw?.tenant?.name || user?.raw?.branchName || 'Merkez Şube';
 
   const performance = useMemo(() => {
-    const completed = jobs.filter((job) => job.status === 'COMPLETED').length;
-    const active = jobs.filter((job) => job.status !== 'COMPLETED').length;
-    const waitingPart = jobs.filter((job) => job.status === 'WAITING_PART').length;
-    const inProgress = jobs.filter((job) => job.status === 'IN_PROGRESS').length;
+    const completed = jobs.filter((job) => String(job.statusKey || job.status).toUpperCase() === 'COMPLETED').length;
+    const active = jobs.filter((job) => String(job.statusKey || job.status).toUpperCase() !== 'COMPLETED').length;
+    const waitingPart = jobs.filter((job) => String(job.statusKey || job.status).toUpperCase() === 'WAITING_PART').length;
+    const inProgress = jobs.filter((job) => String(job.statusKey || job.status).toUpperCase() === 'IN_PROGRESS').length;
     return { completed, active, waitingPart, inProgress };
   }, [jobs]);
 

@@ -34,7 +34,7 @@ public class Appointment {
   private LocalDateTime appointmentDate;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "status", nullable = false)
+  @Column(name = "status", nullable = false, length = 50)
   private AppointmentStatus status;
 
   @Column(name = "notes", columnDefinition = "TEXT")

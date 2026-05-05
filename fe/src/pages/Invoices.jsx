@@ -27,7 +27,7 @@ export default function Invoices() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(paymentMap));
   }, [paymentMap]);
 
-  const completedJobs = useMemo(() => jobs.filter((job) => job.status === 'COMPLETED').sort((a, b) => Number(b.id) - Number(a.id)), [jobs]);
+  const completedJobs = useMemo(() => jobs.filter((job) => String(job.statusKey || job.status).toUpperCase() === 'COMPLETED').sort((a, b) => Number(b.id) - Number(a.id)), [jobs]);
 
   useEffect(() => {
     if (!selectedInvoiceId && completedJobs.length > 0) {
