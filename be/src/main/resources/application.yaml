@@ -1,0 +1,45 @@
+server:
+  port: ${SERVER_PORT:8090}
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3307/velauto?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_HIBERNATE_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:true}
+    properties:
+      hibernate:
+        format_sql: ${JPA_PROPERTIES_HIBERNATE_FORMAT_SQL:true}
+        dialect: ${JPA_PROPERTIES_HIBERNATE_DIALECT:org.hibernate.dialect.MySQLDialect}
+
+  liquibase:
+    enabled: ${LIQUIBASE_ENABLED:true}
+    change-log: ${LIQUIBASE_CHANGELOG:classpath:db/changelog/db.changelog-master.yaml}
+    clear-checksums: true
+    drop-first: true  # Database'i tamamen reset etmek için true yapıldı
+
+  # Gemini AI Konfigürasyonu
+  ai:
+    vertex:
+      ai:
+        gemini:
+          project-id: "${SPRING_AI_VERTEX_AI_GEMINI_PROJECT_ID:dummy-project-id}"
+          location: "${SPRING_AI_VERTEX_AI_GEMINI_LOCATION:us-central1}"
+          chat:
+            options:
+              model: "${SPRING_AI_VERTEX_AI_GEMINI_CHAT_OPTIONS_MODEL:gemini-2.0-flash}"
+              temperature: ${SPRING_AI_VERTEX_AI_GEMINI_CHAT_OPTIONS_TEMPERATURE:0.5}
+
+app:
+  jwt:
+    secret: "${JWT_SECRET:velAutoSecretKeyForJwtSecurityVelAutoSecretKeyForJwtSecurity}"
+    expiration-ms: ${JWT_EXPIRATION:3600000}
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:86400000}
+
+
+

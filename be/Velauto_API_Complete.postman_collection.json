@@ -1,0 +1,320 @@
+{
+  "info": {
+    "_postman_id": "d8334878-c8e5-40e0-92c1-4245f105d1b4",
+    "name": "Velauto API - Complete Collection 2026",
+    "description": "Velauto Backend API - Complete Collection with All Endpoints (60+). Auth, Admin Provisioning, Customers, Vehicles, ServiceCatalog, Appointments, ServiceForms, ServiceFormItems, Payments, Invoices, Expenses, Dashboard",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "41807150"
+  },
+  "item": [
+    {
+      "name": "1. Auth - Public",
+      "item": [
+        {
+          "name": "Register",
+          "event": [{
+            "listen": "test",
+            "script": {"exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "const json = pm.response.json();", "if (json.accessToken) pm.environment.set('accessToken', json.accessToken);", "if (json.refreshToken) pm.environment.set('refreshToken', json.refreshToken);"]}
+          }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"email\":\"customer@velauto.com\",\"password\":\"Test1234\",\"confirmPassword\":\"Test1234\",\"fullName\":\"Test Customer\",\"phone\":\"5551234567\",\"address\":\"Istanbul\",\"companyName\":\"Velauto\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "register"]}}
+        },
+        {
+          "name": "Login",
+          "event": [{
+            "listen": "test",
+            "script": {"exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "const json = pm.response.json();", "if (json.accessToken) pm.environment.set('accessToken', json.accessToken);"]}
+          }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"email\":\"customer@velauto.com\",\"password\":\"Test1234\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "login"]}}
+        },
+        {
+          "name": "Refresh Token",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"refreshToken\":\"{{refreshToken}}\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "refresh"]}}
+        },
+        {
+          "name": "Forgot Password",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"email\":\"customer@velauto.com\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "forgot-password"]}}
+        },
+        {
+          "name": "Reset Password",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"token\":\"{{resetToken}}\",\"newPassword\":\"NewPass123\",\"confirmNewPassword\":\"NewPass123\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "reset-password"]}}
+        }
+      ]
+    },
+    {
+      "name": "2. Auth - Protected",
+      "item": [
+        {
+          "name": "Change Password",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"oldPassword\":\"Test1234\",\"newPassword\":\"NewPass123\",\"confirmNewPassword\":\"NewPass123\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/change-password", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "change-password"]}}
+        },
+        {
+          "name": "Logout",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "logout"]}}
+        }
+      ]
+    },
+    {
+      "name": "3. Admin Provisioning",
+      "item": [
+        {
+          "name": "Create Admin (SUPER_ADMIN)",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{superAdminToken}}"}], "body": {"mode": "raw", "raw": "{\"email\":\"admin@velauto.com\",\"password\":\"Admin1234\",\"fullName\":\"Admin User\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/admin/create", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "admin", "create"]}}
+        },
+        {
+          "name": "Create Staff",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{adminToken}}"}], "body": {"mode": "raw", "raw": "{\"email\":\"staff@velauto.com\",\"password\":\"Staff1234\",\"fullName\":\"Staff User\",\"phone\":\"5551234567\",\"title\":\"Service Advisor\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/staff/create", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "staff", "create"]}}
+        }
+      ]
+    },
+    {
+      "name": "4. Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "event": [{
+            "listen": "test",
+            "script": {"exec": ["const json = pm.response.json();", "if (json.id) pm.environment.set('customerId', json.id);"]}
+          }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"fullName\":\"Customer Name\",\"phone\":\"5551234567\",\"email\":\"customer@example.com\",\"address\":\"Istanbul\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/customers", "host": ["{{baseUrl}}"], "path": ["api", "v1", "customers"]}}
+        },
+        {
+          "name": "Get Customer",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/customers/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "customers", "{{customerId}}"]}}
+        },
+        {
+          "name": "List Customers",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/customers?page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api", "v1", "customers"], "query": [{"key": "page", "value": "0"}, {"key": "size", "value": "10"}]}}
+        },
+        {
+          "name": "Update Customer",
+          "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"fullName\":\"Updated Name\",\"phone\":\"5559876543\",\"email\":\"updated@example.com\",\"address\":\"Istanbul / Kadikoy\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/customers/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "customers", "{{customerId}}"]}}
+        },
+        {
+          "name": "Delete Customer",
+          "request": {"method": "DELETE", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/customers/{{customerId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "customers", "{{customerId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "5. Vehicles",
+      "item": [
+        {
+          "name": "Create Vehicle",
+          "event": [{
+            "listen": "test",
+            "script": {"exec": ["const json = pm.response.json();", "if (json.id) pm.environment.set('vehicleId', json.id);"]}
+          }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"licensePlate\":\"34ABC1234\",\"chassisNo\":\"WVWZZZ1JZXW000001\",\"currentKm\":125000,\"customerId\":1}"}, "url": {"raw": "{{baseUrl}}/api/v1/vehicles", "host": ["{{baseUrl}}"], "path": ["api", "v1", "vehicles"]}}
+        },
+        {
+          "name": "Get Vehicle",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/vehicles/{{vehicleId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "vehicles", "{{vehicleId}}"]}}
+        },
+        {
+          "name": "List Vehicles",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/vehicles?page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api", "v1", "vehicles"], "query": [{"key": "page", "value": "0"}, {"key": "size", "value": "10"}]}}
+        },
+        {
+          "name": "Update Vehicle",
+          "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"licensePlate\":\"34ABC1234\",\"currentKm\":130000}"}, "url": {"raw": "{{baseUrl}}/api/v1/vehicles/{{vehicleId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "vehicles", "{{vehicleId}}"]}}
+        },
+        {
+          "name": "Assign Staff",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"staffId\":1}"}, "url": {"raw": "{{baseUrl}}/api/v1/vehicles/{{vehicleId}}/assign-staff", "host": ["{{baseUrl}}"], "path": ["api", "v1", "vehicles", "{{vehicleId}}", "assign-staff"]}}
+        },
+        {
+          "name": "Delete Vehicle",
+          "request": {"method": "DELETE", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/vehicles/{{vehicleId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "vehicles", "{{vehicleId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "6. Appointments",
+      "item": [
+        {
+          "name": "Create Appointment",
+          "event": [{
+            "listen": "test",
+            "script": {"exec": ["const json = pm.response.json();", "if (json.id) pm.environment.set('appointmentId', json.id);"]}
+          }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"customerId\":1,\"vehicleId\":1,\"appointmentDate\":\"2026-04-01T10:00:00\",\"description\":\"Regular maintenance\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/appointments", "host": ["{{baseUrl}}"], "path": ["api", "v1", "appointments"]}}
+        },
+        {
+          "name": "Get Appointment",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "appointments", "{{appointmentId}}"]}}
+        },
+        {
+          "name": "List Appointments",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/appointments?page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api", "v1", "appointments"], "query": [{"key": "page", "value": "0"}, {"key": "size", "value": "10"}]}}
+        },
+        {
+          "name": "Update Appointment",
+          "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"appointmentDate\":\"2026-04-02T10:00:00\",\"description\":\"Delayed appointment\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "appointments", "{{appointmentId}}"]}}
+        },
+        {
+          "name": "Delete Appointment",
+          "request": {"method": "DELETE", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/appointments/{{appointmentId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "appointments", "{{appointmentId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "7. Service Forms",
+      "item": [
+        {
+          "name": "Create Service Form",
+          "event": [{
+            "listen": "test",
+            "script": {"exec": ["const json = pm.response.json();", "if (json.id) pm.environment.set('serviceFormId', json.id);"]}
+          }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"appointmentId\":1,\"vehicleId\":1,\"description\":\"Full service\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/service-forms", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-forms"]}}
+        },
+        {
+          "name": "Get Service Form",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/service-forms/{{serviceFormId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-forms", "{{serviceFormId}}"]}}
+        },
+        {
+          "name": "List Service Forms",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/service-forms?page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-forms"], "query": [{"key": "page", "value": "0"}, {"key": "size", "value": "10"}]}}
+        },
+        {
+          "name": "Update Service Form",
+          "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"description\":\"Extended service\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/service-forms/{{serviceFormId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-forms", "{{serviceFormId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "8. Payments",
+      "item": [
+        {
+          "name": "Create Payment",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"serviceFormId\":1,\"amount\":\"500.00\",\"paymentMethod\":\"CASH\",\"transactionId\":\"TRX001\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/payments", "host": ["{{baseUrl}}"], "path": ["api", "v1", "payments"]}}
+        },
+        {
+          "name": "Get Payment",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/payments/1", "host": ["{{baseUrl}}"], "path": ["api", "v1", "payments", "1"]}}
+        },
+        {
+          "name": "List Payments",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/payments?page=0&size=10", "host": ["{{baseUrl}}"], "path": ["api", "v1", "payments"], "query": [{"key": "page", "value": "0"}, {"key": "size", "value": "10"}]}}
+        }
+      ]
+    },
+    {
+      "name": "9. Invoices",
+      "item": [
+        {
+          "name": "Generate Invoice",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/invoices/generate/{{serviceFormId}}", "host": ["{{baseUrl}}"], "path": ["api", "v1", "invoices", "generate", "{{serviceFormId}}"]}}
+        },
+        {
+          "name": "Download Invoice PDF",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/invoices/1/download", "host": ["{{baseUrl}}"], "path": ["api", "v1", "invoices", "1", "download"]}}
+        }
+      ]
+    },
+    {
+      "name": "10. Service Form Items",
+      "item": [
+        {
+          "name": "Add Service Item",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"serviceFormId\":1,\"itemName\":\"Oil Change\",\"unitPrice\":\"250.00\",\"quantity\":1,\"taxRate\":\"18\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/service-form-items", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-form-items"]}}
+        },
+        {
+          "name": "Get Item",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/service-form-items/1", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-form-items", "1"]}}
+        }
+      ]
+    },
+    {
+      "name": "11. User Profile",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/users/me", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "me"]}}
+        },
+        {
+          "name": "Update Profile",
+          "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"firstName\":\"Updated\",\"lastName\":\"Name\",\"phone\":\"5559876543\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/users/profile", "host": ["{{baseUrl}}"], "path": ["api", "v1", "users", "profile"]}}
+        }
+      ]
+    },
+    {
+      "name": "5.5. Service Catalog",
+      "item": [
+        {
+          "name": "Create Service",
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"name\":\"Oil Change\",\"description\":\"Regular oil change service\",\"basePrice\":\"250.00\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/service-catalogs", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-catalogs"]}}
+        },
+        {
+          "name": "Get Service",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/service-catalogs/1", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-catalogs", "1"]}}
+        },
+        {
+          "name": "List Services",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/service-catalogs?page=0&size=20", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-catalogs"], "query": [{"key": "page", "value": "0"}, {"key": "size", "value": "20"}]}}
+        },
+        {
+          "name": "Update Service",
+          "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"name\":\"Premium Oil Change\",\"basePrice\":\"350.00\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/service-catalogs/1", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-catalogs", "1"]}}
+        },
+        {
+          "name": "Delete Service",
+          "request": {"method": "DELETE", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": {"raw": "{{baseUrl}}/api/v1/service-catalogs/1", "host": ["{{baseUrl}}"], "path": ["api", "v1", "service-catalogs", "1"]}}
+        }
+      ]
+    },
+    {
+      "name": "13. Negative Tests",
+      "item": [
+        {
+          "name": "Register - Duplicate Email",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('4xx error expected', () => pm.expect(pm.response.code).to.be.within(400, 499));"]} }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"email\":\"customer@velauto.com\",\"password\":\"Test1234\",\"confirmPassword\":\"Test1234\",\"fullName\":\"Test Customer\",\"phone\":\"5551234567\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "register"]}}
+        },
+        {
+          "name": "Register - Password Mismatch",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('4xx error expected', () => pm.expect(pm.response.code).to.be.within(400, 499));"]} }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"email\":\"newuser@velauto.com\",\"password\":\"Test1234\",\"confirmPassword\":\"Different1234\",\"fullName\":\"Test\",\"phone\":\"5551234568\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "register"]}}
+        },
+        {
+          "name": "Register - Weak Password",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('4xx error expected', () => pm.expect(pm.response.code).to.be.within(400, 499));"]} }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"email\":\"weakpass@velauto.com\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"fullName\":\"Test\",\"phone\":\"5551234569\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "register"]}}
+        },
+        {
+          "name": "Admin Create - Unauthorized (ADMIN token)",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('403 Forbidden', () => pm.response.to.have.status(403));"]} }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{adminToken}}"}], "body": {"mode": "raw", "raw": "{\"email\":\"unauthorized@velauto.com\",\"password\":\"Admin1234\",\"fullName\":\"Unauthorized Admin\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/admin/create", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "admin", "create"]}}
+        },
+        {
+          "name": "Staff Create - Unauthorized (CUSTOMER token)",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('403 Forbidden', () => pm.response.to.have.status(403));"]} }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}], "body": {"mode": "raw", "raw": "{\"email\":\"unauthorized@velauto.com\",\"password\":\"Staff1234\",\"fullName\":\"Unauthorized Staff\",\"phone\":\"5559876500\",\"title\":\"Advisor\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/staff/create", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "staff", "create"]}}
+        },
+        {
+          "name": "Change Password - No Token (401)",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"]} }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"oldPassword\":\"Test1234\",\"newPassword\":\"Newpass123\",\"confirmNewPassword\":\"Newpass123\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/change-password", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "change-password"]}}
+        },
+        {
+          "name": "Refresh - Invalid Token (401)",
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"]} }],
+          "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"refreshToken\":\"00000000-0000-0000-0000-000000000000\"}"}, "url": {"raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "v1", "auth", "refresh"]}}
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:8090", "type": "string"},
+    {"key": "accessToken", "value": "", "type": "string"},
+    {"key": "refreshToken", "value": "", "type": "string"},
+    {"key": "superAdminToken", "value": "", "type": "string"},
+    {"key": "adminToken", "value": "", "type": "string"},
+    {"key": "staffToken", "value": "", "type": "string"},
+    {"key": "customerId", "value": "1", "type": "string"},
+    {"key": "vehicleId", "value": "1", "type": "string"},
+    {"key": "appointmentId", "value": "1", "type": "string"},
+    {"key": "serviceFormId", "value": "1", "type": "string"}
+  ]
+}
+

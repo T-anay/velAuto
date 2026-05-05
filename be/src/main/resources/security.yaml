@@ -1,0 +1,364 @@
+# Velauto Backend - Security Configuration
+# Endpoint erişim kontrolleri ve rol tanımlamaları
+
+security:
+  endpoints:
+    # ==========================================
+    # AUTH - PUBLIC ENDPOINTS (Kimlik doğrulama gerektirmiyor)
+    # ==========================================
+    - path: "/api/v1/auth/register"
+      method: "POST"
+      description: "Yeni kullanıcı kaydı (Public)"
+      roles: []
+
+    - path: "/api/v1/auth/login"
+      method: "POST"
+      description: "Kullanıcı giriş (Public)"
+      roles: []
+
+    - path: "/api/v1/auth/refresh"
+      method: "POST"
+      description: "Token yenile (Public)"
+      roles: []
+
+    - path: "/api/v1/auth/forgot-password"
+      method: "POST"
+      description: "Şifre sıfırlama talebi (Public)"
+      roles: []
+
+    - path: "/api/v1/auth/reset-password"
+      method: "POST"
+      description: "Şifre sıfırla (Public)"
+      roles: []
+
+    # ==========================================
+    # AUTH - PROTECTED ENDPOINTS (Kimlik doğrulama gerekli)
+    # ==========================================
+    - path: "/api/v1/auth/change-password"
+      method: "POST"
+      description: "Şifre değiştir"
+      roles: ["CUSTOMER", "STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/auth/logout"
+      method: "POST"
+      description: "Çıkış yap"
+      roles: ["CUSTOMER", "STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # ADMIN PROVISIONING - SUPER_ADMIN ONLY
+    # ==========================================
+    - path: "/api/v1/auth/admin/create"
+      method: "POST"
+      description: "Admin kullanıcı oluştur"
+      roles: ["SUPER_ADMIN"]
+
+    - path: "/api/v1/auth/staff/create"
+      method: "POST"
+      description: "Personel kullanıcı oluştur"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # CUSTOMERS
+    # ==========================================
+    - path: "/api/v1/customers"
+      method: "POST"
+      description: "Yeni müşteri oluştur"
+      roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/customers"
+      method: "GET"
+      description: "Müşteri listesi (sayfalı)"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/customers/{id}"
+      method: "GET"
+      description: "Müşteri detayı getir"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/customers/{id}"
+      method: "PUT"
+      description: "Müşteri bilgilerini güncelle"
+      roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/customers/{id}"
+      method: "DELETE"
+      description: "Müşteri sil"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # VEHICLES
+    # ==========================================
+    - path: "/api/v1/vehicles"
+      method: "POST"
+      description: "Yeni araç oluştur"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/vehicles"
+      method: "GET"
+      description: "Araç listesi (sayfalı)"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/vehicles/{id}"
+      method: "GET"
+      description: "Araç detayı getir"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/vehicles/{id}"
+      method: "PUT"
+      description: "Araç bilgilerini güncelle"
+      roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/vehicles/{id}"
+      method: "DELETE"
+      description: "Araç sil"
+      roles: ["CUSTOMER", "ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # APPOINTMENTS
+    # ==========================================
+    - path: "/api/v1/appointments"
+      method: "POST"
+      description: "Yeni randevu oluştur"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/appointments"
+      method: "GET"
+      description: "Randevu listesi (sayfalı)"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/appointments/{id}"
+      method: "GET"
+      description: "Randevu detayı getir"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/appointments/{id}"
+      method: "PUT"
+      description: "Randevu güncelle"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/appointments/{id}/cancel"
+      method: "PUT"
+      description: "Randevu iptal et"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/appointments/{id}"
+      method: "DELETE"
+      description: "Randevu sil"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # SERVICE FORMS
+    # ==========================================
+    - path: "/api/v1/service-forms"
+      method: "POST"
+      description: "Yeni hizmet formu oluştur"
+      roles: ["STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-forms"
+      method: "GET"
+      description: "Hizmet formu listesi (sayfalı)"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-forms/{id}"
+      method: "GET"
+      description: "Hizmet formu detayı getir"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-forms/{id}"
+      method: "PUT"
+      description: "Hizmet formu güncelle"
+      roles: ["STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-forms/{id}"
+      method: "DELETE"
+      description: "Hizmet formu sil"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # SERVICE FORM ITEMS
+    # ==========================================
+    - path: "/api/v1/service-form-items"
+      method: "POST"
+      description: "Hizmet formu öğesi oluştur"
+      roles: ["STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-form-items"
+      method: "GET"
+      description: "Hizmet formu öğeleri listesi (sayfalı)"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-form-items/{id}"
+      method: "GET"
+      description: "Hizmet formu öğesi detayı getir"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-form-items/{id}"
+      method: "PUT"
+      description: "Hizmet formu öğesi güncelle"
+      roles: ["STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-form-items/{id}"
+      method: "DELETE"
+      description: "Hizmet formu öğesi sil"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # SERVICE CATALOG (Frontend'in kullandığı eksik endpoint)
+    # ==========================================
+    - path: "/api/v1/service-catalog"
+      method: "GET"
+      description: "Hizmet kataloğu listesi"
+      roles: ["CUSTOMER", "STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/service-catalog"
+      method: "POST"
+      description: "Hizmet kataloğuna yeni kayıt"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # PAYMENTS
+    # ==========================================
+    - path: "/api/v1/payments"
+      method: "POST"
+      description: "Yeni ödeme oluştur"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/payments"
+      method: "GET"
+      description: "Ödeme listesi (sayfalı)"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/payments/{id}"
+      method: "GET"
+      description: "Ödeme detayı getir"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/payments/{id}"
+      method: "PUT"
+      description: "Ödeme güncelle"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/payments/{id}/refund"
+      method: "POST"
+      description: "Ödeme iadesi işlemi yap"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # INVOICES
+    # ==========================================
+    - path: "/api/v1/invoices"
+      method: "POST"
+      description: "Yeni fatura oluştur"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/invoices"
+      method: "GET"
+      description: "Fatura listesi (sayfalı)"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/invoices/{id}"
+      method: "GET"
+      description: "Fatura detayı getir"
+      roles: ["CUSTOMER", "ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/invoices/{id}"
+      method: "PUT"
+      description: "Fatura güncelle"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/invoices/{id}"
+      method: "DELETE"
+      description: "Fatura sil"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # EXPENSES
+    # ==========================================
+    - path: "/api/v1/expenses"
+      method: "POST"
+      description: "Yeni gider oluştur"
+      roles: ["STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/expenses"
+      method: "GET"
+      description: "Gider listesi (sayfalı)"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/expenses/{id}"
+      method: "GET"
+      description: "Gider detayı getir"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/expenses/{id}"
+      method: "PUT"
+      description: "Gider güncelle"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/expenses/{id}"
+      method: "DELETE"
+      description: "Gider sil"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # DASHBOARD
+    # ==========================================
+    - path: "/api/v1/dashboard/summary"
+      method: "GET"
+      description: "Dashboard genel özet (Eksik olan)"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/dashboard/statistics"
+      method: "GET"
+      description: "Dashboard istatistikleri getir"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/dashboard/appointments-today"
+      method: "GET"
+      description: "Bugünün randevuları getir"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/dashboard/revenue-summary"
+      method: "GET"
+      description: "Gelir özeti getir"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # USERS (SECURITY)
+    # ==========================================
+    - path: "/api/v1/users/profile"
+      method: "GET"
+      description: "Mevcut kullanıcı profili getir"
+      roles: ["CUSTOMER", "STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/users/profile"
+      method: "PUT"
+      description: "Profil güncelle"
+      roles: ["CUSTOMER", "STAFF", "ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/users"
+      method: "GET"
+      description: "Kullanıcılar listesi (sayfalı)"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/users/{id}"
+      method: "GET"
+      description: "Kullanıcı detayı getir"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/users/{id}/deactivate"
+      method: "PUT"
+      description: "Kullanıcı hesabını devre dışı bırak"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    # ==========================================
+    # SECURITY INFO
+    # ==========================================
+    - path: "/api/v1/security-info/endpoints"
+      method: "GET"
+      description: "Tüm endpoint bilgilerini getir"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/security-info/my-roles"
+      method: "GET"
+      description: "Mevcut kullanıcının rollerini getir"
+      roles: ["CUSTOMER", "STAFF", "ADMIN", "SUPER_ADMIN"]

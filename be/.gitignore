@@ -1,0 +1,91 @@
+# Velauto Backend - Git Ignore Configuration
+
+# Environment Files
+.env
+.env.local
+.env.*.local
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.backup
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+*.iws
+*.ipr
+*.sublime-workspace
+*.sublime-project
+
+# JetBrains / IntelliJ specific files to ignore
+# Ignore the entire .idea folder (workspace, caches, local history)
+.idea/**
+# Keep only shared IntelliJ settings if you want (uncomment if needed)
+# !.idea/inspectionProfiles
+# !.idea/codeStyles
+
+# Build Files
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Node (if using any node dependencies)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Gradle (if applicable)
+.gradle/
+build/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Credentials & Secrets
+secrets/
+.credentials
+.secret
+application-secret.yaml
+security-secret.yaml
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# IDE Cache
+.classpath
+.project
+.settings/
+.factorypath
+
+# SonarQube
+.sonarqube/
+.sonarlint/
