@@ -11,13 +11,12 @@ import java.util.Optional;
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice, Integer> {
 
-  @Query("SELECT i FROM Invoice i WHERE i.id = :id AND i.tenantId = :tenantId AND i.deletedAt IS NULL")
-  Optional<Invoice> findByIdAndTenantId(@Param("id") Integer id, @Param("tenantId") Integer tenantId);
-
-  @Query("SELECT i FROM Invoice i WHERE i.serviceFormId = :serviceFormId AND i.tenantId = :tenantId AND i.deletedAt IS NULL")
-  Optional<Invoice> findByServiceFormIdAndTenantId(@Param("serviceFormId") Integer serviceFormId, @Param("tenantId") Integer tenantId);
-
-  @Query(value = "SELECT MAX(CAST(SUBSTRING(invoice_number, -5) AS UNSIGNED)) FROM invoices WHERE tenant_id = :tenantId AND invoice_number LIKE :prefix",nativeQuery = true)
-  Integer getMaxInvoiceSequence(@Param("tenantId") Integer tenantId, @Param("prefix") String prefix);
+  @Query("SELECT i FROM Invoice i WHERE i.id = :id AND i.deletedAt IS NULL")
+  Optional<Invoice> findByIdAndDeletedAtIsNull(@Param("id") Integer id);
+  
+  @Query("SELECT i FROM Invoice i WHERE i.serviceFormId = :serviceFormId AND i.deletedAt IS NULL")
+  Optional<Invoice> findByServiceFormIdAndDeletedAtIsNull(@Param("serviceFormId") Integer serviceFormId);
+  
+  @Query(value = "SELECT MAX(CAST(SUBSTRING(invoice_number, -5) AS UNSIGNED)) FROM invoices WHERE invoice_number LIKE :prefix", nativeQuery = true)
+  Integer getMaxInvoiceSequence(@Param("prefix") String prefix);
 }
-

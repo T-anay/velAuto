@@ -26,7 +26,6 @@ public class AppointmentResponseDto {
 
   private String notes;
 
-  private Integer tenantId;
 
   private Integer createdBy;
 

@@ -30,7 +30,6 @@ public class ServiceFormItemController {
   ) {
     ServiceFormItemResponseDto response = serviceFormItemService.addItemToForm(
         request,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -43,8 +42,7 @@ public class ServiceFormItemController {
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
     ServiceFormItemResponseDto response = serviceFormItemService.getItemById(
-        id,
-        userDetails.getTenantId()
+        id
     );
     return ResponseEntity.ok(response);
   }
@@ -60,7 +58,6 @@ public class ServiceFormItemController {
     Pageable pageable = PageRequest.of(page, size);
     Page<ServiceFormItemResponseDto> response = serviceFormItemService.getItemsByServiceForm(
         serviceFormId,
-        userDetails.getTenantId(),
         pageable
     );
     return ResponseEntity.ok(response);
@@ -74,7 +71,6 @@ public class ServiceFormItemController {
   ) {
     serviceFormItemService.deleteItem(
         id,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.noContent().build();

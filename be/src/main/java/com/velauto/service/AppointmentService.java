@@ -13,34 +13,29 @@ public interface AppointmentService {
 
   AppointmentResponseDto createAppointment(
       AppointmentCreateDto request,
-      Integer tenantId,
       Integer userId
   );
 
   AppointmentResponseDto getAppointmentById(
       Integer appointmentId,
-      Integer tenantId
+      Integer userId
   );
 
   Page<AppointmentResponseDto> getAppointmentsByTenant(
-      Integer tenantId,
       Pageable pageable
   );
 
   Page<AppointmentResponseDto> getAppointmentsByCustomer(
       Integer customerId,
-      Integer tenantId,
       Pageable pageable
   );
 
   Page<AppointmentResponseDto> getAppointmentsByVehicle(
       Integer vehicleId,
-      Integer tenantId,
       Pageable pageable
   );
 
   List<AppointmentResponseDto> getAppointmentsByDateRange(
-      Integer tenantId,
       LocalDateTime startDate,
       LocalDateTime endDate
   );
@@ -48,18 +43,15 @@ public interface AppointmentService {
   AppointmentResponseDto updateAppointment(
       Integer appointmentId,
       AppointmentUpdateDto request,
-      Integer tenantId,
       Integer userId
   );
 
   void deleteAppointment(
       Integer appointmentId,
-      Integer tenantId,
       Integer userId
   );
 
   com.velauto.dto.AppointmentResponseDto bookOnlineAppointment(
-      com.velauto.dto.PublicAppointmentRequestDto request,
-      Integer tenantId
+      com.velauto.dto.PublicAppointmentRequestDto request
   );
 }

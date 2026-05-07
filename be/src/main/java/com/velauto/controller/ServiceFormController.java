@@ -33,7 +33,6 @@ public class ServiceFormController {
     ServiceFormResponseDto response = serviceFormService.createFromAppointment(
         appointmentId,
         request,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -47,7 +46,6 @@ public class ServiceFormController {
   ) {
     ServiceFormResponseDto response = serviceFormService.createDirectly(
         request,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -61,7 +59,7 @@ public class ServiceFormController {
   ) {
     ServiceFormResponseDto response = serviceFormService.getServiceFormById(
         id,
-        userDetails.getTenantId()
+        userDetails.getUserId()
     );
     return ResponseEntity.ok(response);
   }
@@ -75,7 +73,6 @@ public class ServiceFormController {
   ) {
     Pageable pageable = PageRequest.of(page, size);
     Page<ServiceFormResponseDto> response = serviceFormService.getServiceFormsByTenant(
-        userDetails.getTenantId(),
         pageable
     );
     return ResponseEntity.ok(response);
@@ -92,7 +89,6 @@ public class ServiceFormController {
     Pageable pageable = PageRequest.of(page, size);
     Page<ServiceFormResponseDto> response = serviceFormService.getServiceFormsByVehicle(
         vehicleId,
-        userDetails.getTenantId(),
         pageable
     );
     return ResponseEntity.ok(response);
@@ -109,7 +105,6 @@ public class ServiceFormController {
     Pageable pageable = PageRequest.of(page, size);
     Page<ServiceFormResponseDto> response = serviceFormService.getServiceFormsByCustomer(
         customerId,
-        userDetails.getTenantId(),
         pageable
     );
     return ResponseEntity.ok(response);
@@ -125,7 +120,6 @@ public class ServiceFormController {
     ServiceFormResponseDto response = serviceFormService.updateServiceForm(
         id,
         request,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.ok(response);
@@ -139,7 +133,6 @@ public class ServiceFormController {
   ) {
     serviceFormService.deleteServiceForm(
         id,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.noContent().build();

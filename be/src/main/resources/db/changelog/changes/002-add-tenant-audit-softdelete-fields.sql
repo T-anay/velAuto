@@ -5,7 +5,6 @@
 ALTER TABLE users
   ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1,
   ADD COLUMN created_by INT DEFAULT NULL,
-  ADD COLUMN tenant_id INT DEFAULT NULL,
   ADD COLUMN updated_by INT DEFAULT NULL,
   ADD COLUMN updated_at TIMESTAMP NULL DEFAULT NULL,
   ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL,
@@ -16,7 +15,6 @@ ALTER TABLE users
 -- Add foreign key constraints for users table
 ALTER TABLE users
   ADD CONSTRAINT fk_users_created_by FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
-  ADD CONSTRAINT fk_users_tenant_id FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE SET NULL,
   ADD CONSTRAINT fk_users_updated_by FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
   ADD CONSTRAINT fk_users_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL;
 

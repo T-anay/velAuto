@@ -30,10 +30,9 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
   @Query("SELECT v FROM Vehicle v WHERE v.deletedAt IS NULL AND v.assignedStaff = :staff")
   Page<Vehicle> findByAssignedStaff(@Param("staff") Staff staff, Pageable pageable);
 
-  // Tenant'a göre tüm araçları listele (Pagination + soft delete filtreli)
-  // FUTURE NOTE: Multi-tenant kontrol için customer.user.tenantId kullanılır
-  @Query("SELECT v FROM Vehicle v WHERE v.deletedAt IS NULL AND v.customer.user.tenantId = :tenantId")
-  Page<Vehicle> findAllByTenant(@Param("tenantId") Integer tenantId, Pageable pageable);
+  // Soft delete filtreli araçları listele (Pagination)
+  @Query("SELECT v FROM Vehicle v WHERE v.deletedAt IS NULL")
+  Page<Vehicle> findAllByDeletedAtIsNull(Pageable pageable);
 
   // Plakaya göre araç + geçmiş bilgileri eager loading ile çek
   // FUTURE NOTE: Hızlı sorgulama için ServiceForm ve Appointment join'leri yapılır

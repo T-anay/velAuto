@@ -22,7 +22,6 @@ public class ServiceCatalogResponseDto {
 
   private BigDecimal basePrice;
 
-  private Integer tenantId;
 
   private Integer createdBy;
 

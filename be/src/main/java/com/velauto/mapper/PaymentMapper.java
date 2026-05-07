@@ -10,7 +10,6 @@ import org.mapstruct.Mapping;
 public interface PaymentMapper {
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "paymentDate", ignore = true)
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)

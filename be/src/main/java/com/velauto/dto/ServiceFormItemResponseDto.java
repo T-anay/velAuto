@@ -26,7 +26,6 @@ public class ServiceFormItemResponseDto {
 
   private BigDecimal lineTotal;
 
-  private Integer tenantId;
 
   private Integer createdBy;
 

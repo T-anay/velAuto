@@ -15,24 +15,21 @@ import java.util.Optional;
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, Integer> {
 
-  @Query("SELECT e FROM Expense e WHERE e.id = :id AND e.tenantId = :tenantId AND e.deletedAt IS NULL")
-  Optional<Expense> findByIdAndTenantId(
-      @Param("id") Integer id,
-      @Param("tenantId") Integer tenantId
+  @Query("SELECT e FROM Expense e WHERE e.id = :id AND e.deletedAt IS NULL")
+  Optional<Expense> findByIdAndDeletedAtIsNull(
+      @Param("id") Integer id
   );
 
-  @Query("SELECT e FROM Expense e WHERE e.tenantId = :tenantId AND e.deletedAt IS NULL ORDER BY e.expenseDate DESC")
-  List<Expense> findByTenantId(@Param("tenantId") Integer tenantId);
+  @Query("SELECT e FROM Expense e WHERE e.deletedAt IS NULL ORDER BY e.expenseDate DESC")
+  List<Expense> findByDeletedAtIsNullOrderByIdDesc();
 
-  @Query("SELECT e FROM Expense e WHERE e.tenantId = :tenantId AND e.deletedAt IS NULL ORDER BY e.expenseDate DESC")
-  Page<Expense> findByTenantIdPaged(
-      @Param("tenantId") Integer tenantId,
+  @Query("SELECT e FROM Expense e WHERE e.deletedAt IS NULL ORDER BY e.expenseDate DESC")
+  Page<Expense> findByDeletedAtIsNullOrderByIdDescPaged(
       Pageable pageable
   );
 
-  @Query("SELECT COALESCE(SUM(e.amount), 0) FROM Expense e WHERE e.tenantId = :tenantId AND YEAR(e.expenseDate) = :year AND MONTH(e.expenseDate) = :month AND e.deletedAt IS NULL")
+  @Query("SELECT COALESCE(SUM(e.amount), 0) FROM Expense e WHERE YEAR(e.expenseDate) = :year AND MONTH(e.expenseDate) = :month AND e.deletedAt IS NULL")
   BigDecimal getMonthlyExpenses(
-      @Param("tenantId") Integer tenantId,
       @Param("year") int year,
       @Param("month") int month
   );

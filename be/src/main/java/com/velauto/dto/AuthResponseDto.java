@@ -22,7 +22,6 @@ public class AuthResponseDto {
 
   private Role role;
 
-  private Integer tenantId;
 
   @Builder.Default
   private String tokenType = "Bearer";

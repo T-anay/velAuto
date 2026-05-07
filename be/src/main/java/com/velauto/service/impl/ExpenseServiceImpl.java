@@ -31,15 +31,14 @@ public class ExpenseServiceImpl implements ExpenseService {
   private final AuditLogService auditLogService;
 
   @Override
-  public ExpenseResponseDto createExpense(ExpenseCreateDto request, Integer tenantId, Integer userId) {
+  public ExpenseResponseDto createExpense(ExpenseCreateDto request, Integer userId) {
     // Guard Clause: Validate input
-    if (request == null || tenantId == null) {
+    if (request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
     // Map DTO to Entity
     Expense expense = expenseMapper.toExpense(request);
-    expense.setTenantId(tenantId);
     expense.setCreatedBy(userId);
     expense.setCreatedAt(LocalDateTime.now());
 
@@ -58,14 +57,14 @@ public class ExpenseServiceImpl implements ExpenseService {
   }
 
   @Override
-  public ExpenseResponseDto updateExpense(Integer expenseId, ExpenseUpdateDto request, Integer tenantId, Integer userId) {
+  public ExpenseResponseDto updateExpense(Integer expenseId, ExpenseUpdateDto request, Integer userId) {
     // Guard Clause: Validate input
-    if (expenseId == null || request == null || tenantId == null) {
+    if (expenseId == null || request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
     // Fetch expense
-    Optional<Expense> expenseOptional = expenseRepository.findByIdAndTenantId(expenseId, tenantId);
+    Optional<Expense> expenseOptional = expenseRepository.findByIdAndDeletedAtIsNull(expenseId);
     if (expenseOptional.isEmpty()) {
       throw new BusinessException(Messages.EXPENSE_NOT_FOUND);
     }
@@ -96,14 +95,14 @@ public class ExpenseServiceImpl implements ExpenseService {
   }
 
   @Override
-  public void deleteExpense(Integer expenseId, Integer tenantId, Integer userId) {
+  public void deleteExpense(Integer expenseId, Integer userId) {
     // Guard Clause: Validate input
-    if (expenseId == null || tenantId == null) {
+    if (expenseId == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
     // Fetch expense
-    Optional<Expense> expenseOptional = expenseRepository.findByIdAndTenantId(expenseId, tenantId);
+    Optional<Expense> expenseOptional = expenseRepository.findByIdAndDeletedAtIsNull(expenseId);
     if (expenseOptional.isEmpty()) {
       throw new BusinessException(Messages.EXPENSE_NOT_FOUND);
     }
@@ -120,7 +119,7 @@ public class ExpenseServiceImpl implements ExpenseService {
     expense.setDeletedAt(now);
     expense.setDeletedBy(userId);
     expenseRepository.save(expense);
-    log.info("Expense deleted: id={}, tenantId={}", expenseId, tenantId);
+    log.info("Expense deleted: id={}", expenseId);
 
     // Audit log
     String auditDetails = String.format(
@@ -133,14 +132,14 @@ public class ExpenseServiceImpl implements ExpenseService {
 
   @Override
   @Transactional(readOnly = true)
-  public ExpenseResponseDto getExpenseById(Integer expenseId, Integer tenantId) {
+  public ExpenseResponseDto getExpenseById(Integer expenseId) {
     // Guard Clause: Validate input
-    if (expenseId == null || tenantId == null) {
+    if (expenseId == null) {
       throw new BusinessException(Messages.EXPENSE_NOT_FOUND);
     }
 
     // Fetch expense
-    Optional<Expense> expenseOptional = expenseRepository.findByIdAndTenantId(expenseId, tenantId);
+    Optional<Expense> expenseOptional = expenseRepository.findByIdAndDeletedAtIsNull(expenseId);
     if (expenseOptional.isEmpty()) {
       throw new BusinessException(Messages.EXPENSE_NOT_FOUND);
     }
@@ -151,13 +150,13 @@ public class ExpenseServiceImpl implements ExpenseService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<ExpenseResponseDto> getAllExpensesByTenant(Integer tenantId, Pageable pageable) {
+  public Page<ExpenseResponseDto> getAllExpensesByTenant(Pageable pageable) {
     // Guard Clause: Validate input
-    if (tenantId == null || pageable == null) {
+    if (pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Page<Expense> expenses = expenseRepository.findByTenantIdPaged(tenantId, pageable);
+    Page<Expense> expenses = expenseRepository.findByDeletedAtIsNullOrderByIdDescPaged(pageable);
     return expenses.map(expenseMapper::toResponseDto);
   }
 }

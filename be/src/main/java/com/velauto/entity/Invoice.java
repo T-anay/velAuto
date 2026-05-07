@@ -24,8 +24,6 @@ public class Invoice {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Integer id;
 
-  @Column(name = "tenant_id", nullable = false)
-  private Integer tenantId;
 
   @Column(name = "service_form_id", nullable = false)
   private Integer serviceFormId;

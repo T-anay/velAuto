@@ -16,7 +16,7 @@ public interface CustomerService {
 
   CustomerResponseDto getByPhone(String phone);
 
-  Page<CustomerResponseDto> getCustomersByTenant(Integer tenantId, Pageable pageable);
+  Page<CustomerResponseDto> getCustomersByTenant(Pageable pageable);
 
   void deleteCustomer(Integer customerId, Integer currentUserId);
 }

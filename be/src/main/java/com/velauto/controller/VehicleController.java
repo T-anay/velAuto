@@ -44,11 +44,10 @@ public class VehicleController {
   // HATA BURADAYDI: @GetMapping anotasyonu eklendi
   @GetMapping
   public ResponseEntity<Page<VehicleResponseDto>> getAllVehicles(
-          @RequestParam Integer tenantId,
           @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
           @AuthenticationPrincipal CustomUserDetails userDetails) {
-    log.info("Araç listesi talebi: tenantId={}, page={}", tenantId, pageable.getPageNumber());
-    Page<VehicleResponseDto> response = vehicleService.getAllVehicles(tenantId, pageable);
+    log.info("Araç listesi talebi: page={}", pageable.getPageNumber());
+    Page<VehicleResponseDto> response = vehicleService.getAllVehicles(pageable);
     return ResponseEntity.ok(response);
   }
 

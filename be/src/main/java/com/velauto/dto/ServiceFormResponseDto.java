@@ -33,7 +33,6 @@ public class ServiceFormResponseDto {
 
   private BigDecimal totalAmount;
 
-  private Integer tenantId;
 
   private Integer createdBy;
 

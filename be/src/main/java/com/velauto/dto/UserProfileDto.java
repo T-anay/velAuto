@@ -1,8 +1,6 @@
 package com.velauto.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,7 +28,6 @@ public class UserProfileDto {
 
   private String role;
 
-  private Integer tenantId;
 
   private java.time.LocalDateTime createdAt;
 }

@@ -9,24 +9,21 @@ public interface PaymentService {
 
   PaymentResponseDto receivePayment(
       PaymentCreateDto request,
-      Integer tenantId,
       Integer userId
   );
 
   PaymentResponseDto getPaymentById(
       Integer paymentId,
-      Integer tenantId
+      Integer userId
   );
 
   Page<PaymentResponseDto> getPaymentsByServiceForm(
       Integer serviceFormId,
-      Integer tenantId,
       Pageable pageable
   );
 
   void deletePayment(
       Integer paymentId,
-      Integer tenantId,
       Integer userId
   );
 }

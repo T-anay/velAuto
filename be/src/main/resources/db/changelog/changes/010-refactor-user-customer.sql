@@ -35,12 +35,12 @@ WHERE phone IS NULL OR TRIM(phone) = '';
 -- changeset copilot:10-4
 UPDATE users u
 JOIN (
-  SELECT tenant_id, phone, MIN(id) AS keep_id
+  SELECT phone, MIN(id) AS keep_id
   FROM users
   WHERE phone IS NOT NULL
-  GROUP BY tenant_id, phone
+  GROUP BY phone
   HAVING COUNT(*) > 1
-) d ON (u.tenant_id <=> d.tenant_id) AND u.phone = d.phone
+) d ON u.phone = d.phone
 SET u.phone = CONCAT(u.phone, '-', u.id)
 WHERE u.id <> d.keep_id;
 
@@ -50,7 +50,7 @@ ALTER TABLE users
 
 -- changeset copilot:10-6
 ALTER TABLE users
-  ADD CONSTRAINT uk_users_tenant_phone UNIQUE (tenant_id, phone);
+  ADD CONSTRAINT uk_users_phone UNIQUE (phone);
 
 -- changeset copilot:10-7
 ALTER TABLE customers

@@ -12,7 +12,6 @@ import org.mapstruct.MappingTarget;
 public interface ExpenseMapper {
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "updatedBy", ignore = true)
@@ -22,7 +21,6 @@ public interface ExpenseMapper {
   Expense toExpense(ExpenseCreateDto dto);
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "updatedBy", ignore = true)

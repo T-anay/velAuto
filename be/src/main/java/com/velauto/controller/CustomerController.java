@@ -51,10 +51,9 @@ public class CustomerController {
 
   @GetMapping
   public ResponseEntity<Page<CustomerResponseDto>> getCustomersByTenant(
-      @RequestParam Integer tenantId,
       @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
       @AuthenticationPrincipal CustomUserDetails userDetails) {
-    Page<CustomerResponseDto> response = customerService.getCustomersByTenant(tenantId, pageable);
+    Page<CustomerResponseDto> response = customerService.getCustomersByTenant(pageable);
     return ResponseEntity.ok(response);
   }
 

@@ -1,7 +1,7 @@
 -- liquibase formatted sql
 
 -- changeset talha:7.1 failOnError:true
--- Create service_forms table with multi-tenant and soft delete support
+-- Create service_forms table with soft delete support
 CREATE TABLE IF NOT EXISTS service_forms (
   id INT AUTO_INCREMENT PRIMARY KEY,
   appointment_id INT,
@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS service_forms (
   general_condition TEXT,
   status VARCHAR(50) NOT NULL DEFAULT 'OPEN',
   total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
-  tenant_id INT NOT NULL,
   created_by INT,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_by INT,
@@ -22,11 +21,9 @@ CREATE TABLE IF NOT EXISTS service_forms (
   CONSTRAINT service_forms_fk_appointment FOREIGN KEY (appointment_id) REFERENCES appointments (id),
   CONSTRAINT service_forms_fk_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles (id),
   CONSTRAINT service_forms_fk_customer FOREIGN KEY (customer_id) REFERENCES customers (id),
-  CONSTRAINT service_forms_fk_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
   CONSTRAINT service_forms_fk_created_by FOREIGN KEY (created_by) REFERENCES users (id),
   CONSTRAINT service_forms_fk_updated_by FOREIGN KEY (updated_by) REFERENCES users (id),
   CONSTRAINT service_forms_fk_deleted_by FOREIGN KEY (deleted_by) REFERENCES users (id),
-  INDEX idx_service_forms_tenant_id (tenant_id),
   INDEX idx_service_forms_vehicle_id (vehicle_id),
   INDEX idx_service_forms_customer_id (customer_id),
   INDEX idx_service_forms_appointment_id (appointment_id),

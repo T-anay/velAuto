@@ -14,26 +14,23 @@ import java.util.Optional;
 @Repository
 public interface ServiceFormItemRepository extends JpaRepository<ServiceFormItem, Integer> {
 
-  @Query("SELECT sfi FROM ServiceFormItem sfi WHERE sfi.id = :id AND sfi.tenantId = :tenantId AND sfi.deletedAt IS NULL")
-  Optional<ServiceFormItem> findByIdAndTenantId(
-      @Param("id") Integer id,
-      @Param("tenantId") Integer tenantId
+  @Query("SELECT sfi FROM ServiceFormItem sfi WHERE sfi.id = :id AND sfi.deletedAt IS NULL")
+  Optional<ServiceFormItem> findByIdAndDeletedAtIsNull(
+      @Param("id") Integer id
   );
 
-  @Query("SELECT sfi FROM ServiceFormItem sfi WHERE sfi.serviceFormId = :serviceFormId AND sfi.tenantId = :tenantId AND sfi.deletedAt IS NULL")
-  List<ServiceFormItem> findByServiceFormIdAndTenantId(
-      @Param("serviceFormId") Integer serviceFormId,
-      @Param("tenantId") Integer tenantId
+  @Query("SELECT sfi FROM ServiceFormItem sfi WHERE sfi.serviceFormId = :serviceFormId AND sfi.deletedAt IS NULL")
+  List<ServiceFormItem> findByServiceFormIdAndDeletedAtIsNull(
+      @Param("serviceFormId") Integer serviceFormId
   );
 
-  @Query("SELECT sfi FROM ServiceFormItem sfi WHERE sfi.serviceFormId = :serviceFormId AND sfi.tenantId = :tenantId AND sfi.deletedAt IS NULL")
-  Page<ServiceFormItem> findByServiceFormIdAndTenantIdPaged(
+  @Query("SELECT sfi FROM ServiceFormItem sfi WHERE sfi.serviceFormId = :serviceFormId AND sfi.deletedAt IS NULL")
+  Page<ServiceFormItem> findByServiceFormIdAndDeletedAtIsNullPaged(
       @Param("serviceFormId") Integer serviceFormId,
-      @Param("tenantId") Integer tenantId,
       Pageable pageable
   );
 
-  @Query("SELECT COUNT(sfi) FROM ServiceFormItem sfi WHERE sfi.tenantId = :tenantId AND sfi.deletedAt IS NULL")
-  long countByTenantId(@Param("tenantId") Integer tenantId);
+  @Query("SELECT COUNT(sfi) FROM ServiceFormItem sfi WHERE sfi.deletedAt IS NULL")
+  long countByDeletedAtIsNull();
 }
 

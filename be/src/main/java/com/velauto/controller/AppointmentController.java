@@ -36,7 +36,6 @@ public class AppointmentController {
   ) {
     AppointmentResponseDto response = appointmentService.createAppointment(
         request,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -50,7 +49,7 @@ public class AppointmentController {
   ) {
     AppointmentResponseDto response = appointmentService.getAppointmentById(
         id,
-        userDetails.getTenantId()
+        userDetails.getUserId()
     );
     return ResponseEntity.ok(response);
   }
@@ -64,7 +63,6 @@ public class AppointmentController {
   ) {
     Pageable pageable = PageRequest.of(page, size);
     Page<AppointmentResponseDto> response = appointmentService.getAppointmentsByTenant(
-        userDetails.getTenantId(),
         pageable
     );
     return ResponseEntity.ok(response);
@@ -81,7 +79,6 @@ public class AppointmentController {
     Pageable pageable = PageRequest.of(page, size);
     Page<AppointmentResponseDto> response = appointmentService.getAppointmentsByCustomer(
         customerId,
-        userDetails.getTenantId(),
         pageable
     );
     return ResponseEntity.ok(response);
@@ -98,7 +95,6 @@ public class AppointmentController {
     Pageable pageable = PageRequest.of(page, size);
     Page<AppointmentResponseDto> response = appointmentService.getAppointmentsByVehicle(
         vehicleId,
-        userDetails.getTenantId(),
         pageable
     );
     return ResponseEntity.ok(response);
@@ -112,7 +108,6 @@ public class AppointmentController {
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
     List<AppointmentResponseDto> response = appointmentService.getAppointmentsByDateRange(
-        userDetails.getTenantId(),
         startDate,
         endDate
     );
@@ -129,7 +124,6 @@ public class AppointmentController {
     AppointmentResponseDto response = appointmentService.updateAppointment(
         id,
         request,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.ok(response);
@@ -143,7 +137,6 @@ public class AppointmentController {
   ) {
     appointmentService.deleteAppointment(
         id,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.noContent().build();
@@ -168,7 +161,7 @@ public class AppointmentController {
       return ResponseEntity.badRequest().build();
     }
 
-    AppointmentResponseDto response = appointmentService.bookOnlineAppointment(request, tenantId);
+    AppointmentResponseDto response = appointmentService.bookOnlineAppointment(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 }

@@ -31,23 +31,17 @@ public class DashboardServiceImpl implements DashboardService {
   private final ExpenseRepository expenseRepository;
 
   @Override
-  public DashboardSummaryResponseDto getSummary(Integer tenantId) {
-    // Guard Clause: Validate input
-    if (tenantId == null || tenantId <= 0) {
-      throw new BusinessException("Gecersiz Kiracı ID", HttpStatus.BAD_REQUEST);
-    }
-
-    log.info("Dashboard ozetlemesi getiriliyor: tenantId={}", tenantId);
+  public DashboardSummaryResponseDto getSummary() {
+    log.info("Dashboard ozetlemesi getiriliyor");
 
     // Get monthly revenue
-    BigDecimal monthlyRevenue = paymentRepository.getMonthlyRevenue(tenantId);
+    BigDecimal monthlyRevenue = paymentRepository.getMonthlyRevenue();
     if (monthlyRevenue == null) {
       monthlyRevenue = BigDecimal.ZERO;
     }
 
     // Get today's pending appointments
     Integer todayPendingAppointments = appointmentRepository.countTodayPendingAppointments(
-        tenantId,
         AppointmentStatus.PENDING
     );
     if (todayPendingAppointments == null) {
@@ -56,7 +50,7 @@ public class DashboardServiceImpl implements DashboardService {
 
     // Get revenue by payment method
     Map<PaymentMethod, BigDecimal> revenueByPaymentMethod = new HashMap<>();
-    List<Object[]> revenueData = paymentRepository.getRevenueByPaymentMethod(tenantId);
+    List<Object[]> revenueData = paymentRepository.getRevenueByPaymentMethod();
 
     for (Object[] row : revenueData) {
       PaymentMethod method = (PaymentMethod) row[0];
@@ -72,7 +66,7 @@ public class DashboardServiceImpl implements DashboardService {
     int currentYear = today.getYear();
     int currentMonth = today.getMonthValue();
 
-    BigDecimal totalExpenses = expenseRepository.getMonthlyExpenses(tenantId, currentYear, currentMonth);
+    BigDecimal totalExpenses = expenseRepository.getMonthlyExpenses(currentYear, currentMonth);
     if (totalExpenses == null) {
       totalExpenses = BigDecimal.ZERO;
     }

@@ -52,8 +52,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         true, // credentialsNonExpired
         true, // accountNonLocked
         Collections.singletonList(authority),
-        user.getId(),
-        user.getTenantId()
+        user.getId()
     );
 
     return userDetails;

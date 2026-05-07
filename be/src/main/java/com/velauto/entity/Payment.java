@@ -38,8 +38,6 @@ public class Payment {
   @Column(name = "payment_date", nullable = false)
   private LocalDateTime paymentDate;
 
-  @Column(name = "tenant_id", nullable = false)
-  private Integer tenantId;
 
   @Column(name = "created_by")
   private Integer createdBy;

@@ -26,7 +26,7 @@ public class InvoiceController {
       @PathVariable Integer serviceFormId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    InvoiceResponseDto invoice = invoiceService.generateInvoice(serviceFormId, userDetails.getTenantId(), userDetails.getUserId());
+    InvoiceResponseDto invoice = invoiceService.generateInvoice(serviceFormId, userDetails.getUserId());
     return ResponseEntity.ok(invoice);
   }
 
@@ -37,7 +37,7 @@ public class InvoiceController {
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
 
-    byte[] pdfBytes = invoiceService.downloadInvoicePdf(invoiceId, userDetails.getTenantId());
+    byte[] pdfBytes = invoiceService.downloadInvoicePdf(invoiceId);
 
     return ResponseEntity.ok()
         .contentType(MediaType.APPLICATION_PDF)

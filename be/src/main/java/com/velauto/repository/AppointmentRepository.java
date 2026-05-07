@@ -16,49 +16,43 @@ import java.util.Optional;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Integer> {
 
-  // Multi-tenant queries with soft delete filter
-  @Query("SELECT a FROM Appointment a WHERE a.id = :id AND a.tenantId = :tenantId AND a.deletedAt IS NULL")
-  Optional<Appointment> findByIdAndTenantId(
-      @Param("id") Integer id,
-      @Param("tenantId") Integer tenantId
+  // Single-tenant queries with soft delete filter
+  @Query("SELECT a FROM Appointment a WHERE a.id = :id AND a.deletedAt IS NULL")
+  Optional<Appointment> findByIdAndDeletedAtIsNull(
+      @Param("id") Integer id
   );
 
-  @Query("SELECT a FROM Appointment a WHERE a.customerId = :customerId AND a.tenantId = :tenantId AND a.deletedAt IS NULL")
-  Page<Appointment> findByCustomerIdAndTenantId(
+  @Query("SELECT a FROM Appointment a WHERE a.customerId = :customerId AND a.deletedAt IS NULL")
+  Page<Appointment> findByCustomerIdAndDeletedAtIsNull(
       @Param("customerId") Integer customerId,
-      @Param("tenantId") Integer tenantId,
       Pageable pageable
   );
 
-  @Query("SELECT a FROM Appointment a WHERE a.vehicleId = :vehicleId AND a.tenantId = :tenantId AND a.deletedAt IS NULL")
-  Page<Appointment> findByVehicleIdAndTenantId(
+  @Query("SELECT a FROM Appointment a WHERE a.vehicleId = :vehicleId AND a.deletedAt IS NULL")
+  Page<Appointment> findByVehicleIdAndDeletedAtIsNull(
       @Param("vehicleId") Integer vehicleId,
-      @Param("tenantId") Integer tenantId,
       Pageable pageable
   );
 
-  @Query("SELECT a FROM Appointment a WHERE a.tenantId = :tenantId AND a.deletedAt IS NULL")
-  Page<Appointment> findByTenantId(
-      @Param("tenantId") Integer tenantId,
+  @Query("SELECT a FROM Appointment a WHERE a.deletedAt IS NULL")
+  Page<Appointment> findAllByDeletedAtIsNull(
       Pageable pageable
   );
 
-  @Query("SELECT a FROM Appointment a WHERE a.tenantId = :tenantId AND a.status = :status AND a.deletedAt IS NULL")
-  List<Appointment> findByTenantIdAndStatus(
-      @Param("tenantId") Integer tenantId,
+  @Query("SELECT a FROM Appointment a WHERE a.status = :status AND a.deletedAt IS NULL")
+  List<Appointment> findByStatusAndDeletedAtIsNull(
       @Param("status") AppointmentStatus status
   );
 
-  @Query("SELECT a FROM Appointment a WHERE a.tenantId = :tenantId AND a.appointmentDate >= :startDate AND a.appointmentDate <= :endDate AND a.deletedAt IS NULL")
-  List<Appointment> findByTenantIdAndDateRange(
-      @Param("tenantId") Integer tenantId,
+  @Query("SELECT a FROM Appointment a WHERE a.appointmentDate >= :startDate AND a.appointmentDate <= :endDate AND a.deletedAt IS NULL")
+  List<Appointment> findByDateRangeAndDeletedAtIsNull(
       @Param("startDate") LocalDateTime startDate,
       @Param("endDate") LocalDateTime endDate
   );
 
-  @Query("SELECT COUNT(a) FROM Appointment a WHERE a.tenantId = :tenantId AND a.deletedAt IS NULL")
-  long countByTenantId(@Param("tenantId") Integer tenantId);
+  @Query("SELECT COUNT(a) FROM Appointment a WHERE a.deletedAt IS NULL")
+  long countByDeletedAtIsNull();
 
-  @Query("SELECT COUNT(a) FROM Appointment a WHERE a.tenantId = :tenantId AND a.status = :status AND DATE(a.appointmentDate) = CURRENT_DATE AND a.deletedAt IS NULL")
-  Integer countTodayPendingAppointments(@Param("tenantId") Integer tenantId, @Param("status") AppointmentStatus status);
+  @Query("SELECT COUNT(a) FROM Appointment a WHERE a.status = :status AND DATE(a.appointmentDate) = CURRENT_DATE AND a.deletedAt IS NULL")
+  Integer countTodayPendingAppointments(@Param("status") AppointmentStatus status);
 }

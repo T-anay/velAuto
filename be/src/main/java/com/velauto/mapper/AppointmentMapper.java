@@ -14,7 +14,6 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 public interface AppointmentMapper {
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "status", expression = "java(com.velauto.entity.enums.AppointmentStatus.PENDING)")
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
@@ -27,7 +26,6 @@ public interface AppointmentMapper {
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "customerId", ignore = true)
   @Mapping(target = "vehicleId", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "updatedBy", ignore = true)

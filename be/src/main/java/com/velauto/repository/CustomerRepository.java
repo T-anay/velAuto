@@ -26,23 +26,6 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
   @Query("SELECT c FROM Customer c WHERE c.deletedAt IS NULL AND c.user.phone = :phone")
   Optional<Customer> findByUserPhone(@Param("phone") String phone);
 
-  // Telefon ve tenant'a göre müşteri arama (public booking için)
-  @Query("SELECT c FROM Customer c WHERE c.deletedAt IS NULL AND c.user.phone = :phone AND c.user.tenantId = :tenantId")
-  Optional<Customer> findByUserPhoneAndTenantId(@Param("phone") String phone, @Param("tenantId") Integer tenantId);
-
-  // Tenant'a göre müşterileri listele (Pagination support)
-  @Query("SELECT c FROM Customer c WHERE c.deletedAt IS NULL AND c.user.tenantId = :tenantId")
-  Page<Customer> findByUser_TenantIdAndDeletedAtIsNull(
-      @Param("tenantId") Integer tenantId,
-      Pageable pageable);
-
-  // Eski compat method - List döndürür
-  @Query("SELECT c FROM Customer c WHERE c.deletedAt IS NULL AND c.user.tenantId = :tenantId")
-  List<Customer> findByUser_TenantIdAndDeletedAtIsNullList(@Param("tenantId") Integer tenantId);
-
-  // Tenant'taki müşteri sayısı
-  @Query("SELECT COUNT(c) FROM Customer c WHERE c.deletedAt IS NULL AND c.user.tenantId = :tenantId")
-  long countByUser_TenantId(@Param("tenantId") Integer tenantId);
 
   // ID ile arama yaparken soft-delete filtresi uygulamak için yardımcı metot
   Optional<Customer> findByIdAndDeletedAtIsNull(Integer id);

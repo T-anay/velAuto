@@ -19,22 +19,22 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
   private final ServiceCatalogRepository repository;
 
   @Override
-  public Page<ServiceCatalogResponseDto> getServiceCatalogsByTenant(Integer tenantId, Pageable pageable) {
-    return repository.findByTenantId(tenantId, pageable)
+  public Page<ServiceCatalogResponseDto> getServiceCatalogsByTenant(Pageable pageable) {
+    return repository.findByDeletedAtIsNull(pageable)
         .map(this::toDto);
   }
 
-  @Override
-  public List<ServiceCatalogResponseDto> getAllByTenant(Integer tenantId) {
-    return repository.findByTenantId(tenantId)
+   @Override
+  public List<ServiceCatalogResponseDto> getAllByTenant() {
+    return repository.findByDeletedAtIsNullOrderByName()
         .stream()
         .map(this::toDto)
         .collect(Collectors.toList());
   }
 
   @Override
-  public ServiceCatalogResponseDto getById(Integer id, Integer tenantId) {
-    ServiceCatalog sc = repository.findByIdAndTenantId(id, tenantId)
+  public ServiceCatalogResponseDto getById(Integer id, Integer userId) {
+    ServiceCatalog sc = repository.findByIdAndDeletedAtIsNull(id)
         .orElseThrow(() -> new RuntimeException("ServiceCatalog not found"));
     return toDto(sc);
   }
@@ -45,7 +45,6 @@ public class ServiceCatalogServiceImpl implements ServiceCatalogService {
     dto.setName(sc.getName());
     dto.setDescription(sc.getDescription());
     dto.setBasePrice(sc.getDefaultPrice());
-    dto.setTenantId(sc.getTenantId());
     dto.setCreatedBy(sc.getCreatedBy());
     dto.setCreatedAt(sc.getCreatedAt());
     dto.setUpdatedBy(sc.getUpdatedBy());

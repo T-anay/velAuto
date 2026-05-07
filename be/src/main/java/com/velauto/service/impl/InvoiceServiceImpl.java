@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -39,25 +38,24 @@ public class InvoiceServiceImpl implements InvoiceService {
   private final AuditLogService auditLogService;
 
   @Override
-  public InvoiceResponseDto generateInvoice(Integer serviceFormId, Integer tenantId, Integer userId) {
-    if (serviceFormId == null || tenantId == null) {
+  public InvoiceResponseDto generateInvoice(Integer serviceFormId, Integer userId) {
+    if (serviceFormId == null) {
       throw new BusinessException("Invalid request", HttpStatus.BAD_REQUEST);
     }
 
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndTenantId(serviceFormId, tenantId);
+    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
     if (serviceFormOptional.isEmpty()) {
       throw new BusinessException("Service form not found", HttpStatus.NOT_FOUND);
     }
 
     ServiceForm serviceForm = serviceFormOptional.get();
-    List<ServiceFormItem> items = serviceFormItemRepository.findByServiceFormIdAndTenantId(serviceFormId, tenantId);
+    List<ServiceFormItem> items = serviceFormItemRepository.findByServiceFormIdAndDeletedAtIsNull(serviceFormId);
 
-    String invoiceNumber = generateInvoiceNumber(tenantId);
+    String invoiceNumber = generateInvoiceNumber();
     byte[] pdfBytes = generatePdfBytes(serviceForm, items, invoiceNumber);
     String pdfUrl = "data:application/pdf;base64," + java.util.Base64.getEncoder().encodeToString(pdfBytes);
 
     Invoice invoice = Invoice.builder()
-        .tenantId(tenantId)
         .serviceFormId(serviceFormId)
         .invoiceNumber(invoiceNumber)
         .issueDate(LocalDateTime.now())
@@ -90,12 +88,12 @@ public class InvoiceServiceImpl implements InvoiceService {
 
   @Override
   @Transactional(readOnly = true)
-  public byte[] downloadInvoicePdf(Integer invoiceId, Integer tenantId) {
-    if (invoiceId == null || tenantId == null) {
+  public byte[] downloadInvoicePdf(Integer invoiceId) {
+    if (invoiceId == null) {
       throw new BusinessException("Invalid request", HttpStatus.BAD_REQUEST);
     }
 
-    Optional<Invoice> invoiceOptional = invoiceRepository.findByIdAndTenantId(invoiceId, tenantId);
+    Optional<Invoice> invoiceOptional = invoiceRepository.findByIdAndDeletedAtIsNull(invoiceId);
     if (invoiceOptional.isEmpty()) {
       throw new BusinessException("Invoice not found", HttpStatus.NOT_FOUND);
     }
@@ -109,9 +107,9 @@ public class InvoiceServiceImpl implements InvoiceService {
     return new byte[0];
   }
 
-  private String generateInvoiceNumber(Integer tenantId) {
+  private String generateInvoiceNumber() {
     String prefix = "INV-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")) + "-";
-    Integer maxSeq = invoiceRepository.getMaxInvoiceSequence(tenantId, prefix + "%");
+    Integer maxSeq = invoiceRepository.getMaxInvoiceSequence(prefix + "%");
     int nextSeq = (maxSeq != null ? maxSeq : 0) + 1;
     return prefix + String.format("%03d", nextSeq);
   }

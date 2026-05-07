@@ -41,20 +41,18 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   public ServiceFormResponseDto createFromAppointment(
           Integer appointmentId,
           ServiceFormCreateDto request,
-          Integer tenantId,
           Integer userId
   ) {
-    if (appointmentId == null || request == null || tenantId == null) {
+    if (appointmentId == null || request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Optional<Appointment> appointmentOptional = appointmentRepository.findByIdAndTenantId(appointmentId, tenantId);
+    Optional<Appointment> appointmentOptional = appointmentRepository.findByIdAndDeletedAtIsNull(appointmentId);
     if (appointmentOptional.isEmpty()) {
       throw new BusinessException(Messages.APPOINTMENT_NOT_FOUND);
     }
-    Appointment appointment = appointmentOptional.get();
 
-    Optional<ServiceForm> existingFormOptional = serviceFormRepository.findByAppointmentIdAndTenantId(appointmentId, tenantId);
+    Optional<ServiceForm> existingFormOptional = serviceFormRepository.findByAppointmentIdAndDeletedAtIsNull(appointmentId);
     if (existingFormOptional.isPresent()) {
       throw new BusinessException(Messages.SERVICE_FORM_ALREADY_EXISTS_FOR_APPOINTMENT);
     }
@@ -75,11 +73,6 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
 
-    Integer customerTenantId = customer.getUser() != null ? customer.getUser().getTenantId() : null;
-    if (customerTenantId == null || !customerTenantId.equals(tenantId)) {
-      throw new BusinessException(Messages.UNAUTHORIZED_ACCESS);
-    }
-
     // KM doğrulamasını atlıyoruz veya güvenli hale getiriyoruz
     Integer incomingKm = request.getCurrentKm() != null ? request.getCurrentKm() : 0;
     Integer lastOdometer = vehicle.getOdometer() != null ? vehicle.getOdometer() : 0;
@@ -91,7 +84,6 @@ public class ServiceFormServiceImpl implements ServiceFormService {
 
     ServiceForm serviceForm = serviceFormMapper.toServiceForm(request);
     serviceForm.setAppointmentId(appointmentId);
-    serviceForm.setTenantId(tenantId);
     serviceForm.setCreatedBy(userId);
     serviceForm.setCreatedAt(LocalDateTime.now());
 
@@ -115,10 +107,9 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   @Override
   public ServiceFormResponseDto createDirectly(
           ServiceFormCreateDto request,
-          Integer tenantId,
           Integer userId
   ) {
-    if (request == null || tenantId == null) {
+    if (request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
@@ -138,15 +129,9 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
 
-    Integer customerTenantId = customer.getUser() != null ? customer.getUser().getTenantId() : null;
-    if (customerTenantId == null || !customerTenantId.equals(tenantId)) {
-      throw new BusinessException(Messages.UNAUTHORIZED_ACCESS);
-    }
-
     Integer incomingKm = request.getCurrentKm() != null ? request.getCurrentKm() : 0;
 
     ServiceForm serviceForm = serviceFormMapper.toServiceForm(request);
-    serviceForm.setTenantId(tenantId);
     serviceForm.setCreatedBy(userId);
     serviceForm.setCreatedAt(LocalDateTime.now());
 
@@ -170,13 +155,13 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   @Transactional(readOnly = true)
   public ServiceFormResponseDto getServiceFormById(
           Integer serviceFormId,
-          Integer tenantId
-  ) {
-    if (serviceFormId == null || tenantId == null) {
-      throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
+          Integer userId
+    ) {
+    if (serviceFormId == null) {
+      throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndTenantId(serviceFormId, tenantId);
+    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
     if (serviceFormOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
     }
@@ -188,14 +173,13 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   @Override
   @Transactional(readOnly = true)
   public Page<ServiceFormResponseDto> getServiceFormsByTenant(
-          Integer tenantId,
           Pageable pageable
   ) {
-    if (tenantId == null || pageable == null) {
+    if (pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Page<ServiceForm> serviceForms = serviceFormRepository.findByTenantId(tenantId, pageable);
+    Page<ServiceForm> serviceForms = serviceFormRepository.findByDeletedAtIsNull(pageable);
     return serviceForms.map(serviceFormMapper::toServiceFormResponseDto);
   }
 
@@ -203,10 +187,9 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   @Transactional(readOnly = true)
   public Page<ServiceFormResponseDto> getServiceFormsByVehicle(
           Integer vehicleId,
-          Integer tenantId,
           Pageable pageable
   ) {
-    if (vehicleId == null || tenantId == null || pageable == null) {
+    if (vehicleId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
@@ -215,7 +198,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.VEHICLE_NOT_FOUND);
     }
 
-    Page<ServiceForm> serviceForms = serviceFormRepository.findByVehicleIdAndTenantId(vehicleId, tenantId, pageable);
+    Page<ServiceForm> serviceForms = serviceFormRepository.findByVehicleIdAndDeletedAtIsNull(vehicleId, pageable);
     return serviceForms.map(serviceFormMapper::toServiceFormResponseDto);
   }
 
@@ -223,10 +206,9 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   @Transactional(readOnly = true)
   public Page<ServiceFormResponseDto> getServiceFormsByCustomer(
           Integer customerId,
-          Integer tenantId,
           Pageable pageable
   ) {
-    if (customerId == null || tenantId == null || pageable == null) {
+    if (customerId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
@@ -235,7 +217,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
 
-    Page<ServiceForm> serviceForms = serviceFormRepository.findByCustomerIdAndTenantId(customerId, tenantId, pageable);
+    Page<ServiceForm> serviceForms = serviceFormRepository.findByCustomerIdAndDeletedAtIsNull(customerId, pageable);
     return serviceForms.map(serviceFormMapper::toServiceFormResponseDto);
   }
 
@@ -243,14 +225,12 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   public ServiceFormResponseDto updateServiceForm(
           Integer serviceFormId,
           ServiceFormUpdateDto request,
-          Integer tenantId,
           Integer userId
-  ) {
-    if (serviceFormId == null || request == null || tenantId == null) {
+    ) {
+    if (serviceFormId == null || request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
-
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndTenantId(serviceFormId, tenantId);
+    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
     if (serviceFormOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
     }
@@ -287,14 +267,13 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   @Override
   public void deleteServiceForm(
           Integer serviceFormId,
-          Integer tenantId,
           Integer userId
   ) {
-    if (serviceFormId == null || tenantId == null) {
+    if (serviceFormId == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndTenantId(serviceFormId, tenantId);
+    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
     if (serviceFormOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
     }
@@ -321,12 +300,12 @@ public class ServiceFormServiceImpl implements ServiceFormService {
 
   @Override
   @Transactional
-  public void completeServiceForm(Integer serviceFormId, Integer tenantId, Integer userId) {
-    if (serviceFormId == null || tenantId == null) {
+  public void completeServiceForm(Integer serviceFormId, Integer userId) {
+    if (serviceFormId == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndTenantId(serviceFormId, tenantId);
+    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
     if (serviceFormOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
     }

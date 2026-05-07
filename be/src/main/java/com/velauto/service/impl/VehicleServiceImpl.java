@@ -234,12 +234,8 @@ public class VehicleServiceImpl implements VehicleService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<VehicleResponseDto> getAllVehicles(Integer tenantId, Pageable pageable) {
-    if (tenantId == null || tenantId <= 0) {
-      throw new BusinessException("Geçersiz Tenant ID", HttpStatus.BAD_REQUEST);
-    }
-
-    Page<Vehicle> vehicles = vehicleRepository.findAllByTenant(tenantId, pageable);
+  public Page<VehicleResponseDto> getAllVehicles(Pageable pageable) {
+    Page<Vehicle> vehicles = vehicleRepository.findAllByDeletedAtIsNull(pageable);
     return vehicles.map(vehicleMapper::toVehicleResponse);
   }
 

@@ -10,7 +10,6 @@ import org.mapstruct.Mapping;
 public interface ServiceFormItemMapper {
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "itemName", ignore = true)
   @Mapping(target = "unitPrice", ignore = true)
   @Mapping(target = "taxRate", ignore = true)

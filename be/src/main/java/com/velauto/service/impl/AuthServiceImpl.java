@@ -177,7 +177,7 @@ public class AuthServiceImpl implements AuthService {
     validateEmailNotExists(email);
 
     String encodedPassword = passwordEncoder.encode(request.getPassword());
-    User adminUser = userMapper.toAdminUser(request, encodedPassword, currentUserId, currentUserId);
+    User adminUser = userMapper.toAdminUser(request, encodedPassword, currentUserId);
     User savedAdmin = userRepository.save(adminUser);
 
     AuthResponseDto response = createAuthResponse(savedAdmin);
@@ -198,12 +198,7 @@ public class AuthServiceImpl implements AuthService {
 
     String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-    Role currentUserRole = currentUser.getRole();
-    Integer tenantId = (currentUserRole == Role.SUPER_ADMIN) // DÜZELTİLDİ
-            ? currentUserId
-            : currentUser.getTenantId();
-
-    User staffUser = userMapper.toStaffUser(request, encodedPassword, currentUserId, tenantId);
+    User staffUser = userMapper.toStaffUser(request, encodedPassword, currentUserId);
     User savedStaffUser = userRepository.save(staffUser);
 
     Staff staff = staffMapper.toStaff(request, savedStaffUser);

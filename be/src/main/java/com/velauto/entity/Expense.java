@@ -26,8 +26,6 @@ public class Expense {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Integer id;
 
-  @Column(name = "tenant_id", nullable = false)
-  private Integer tenantId;
 
   @Column(name = "amount", nullable = false, columnDefinition = "DECIMAL(10, 2)")
   private BigDecimal amount;

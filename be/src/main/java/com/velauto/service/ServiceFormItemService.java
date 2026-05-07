@@ -9,24 +9,20 @@ public interface ServiceFormItemService {
 
   ServiceFormItemResponseDto addItemToForm(
       ServiceFormItemCreateDto request,
-      Integer tenantId,
       Integer userId
   );
 
   ServiceFormItemResponseDto getItemById(
-      Integer itemId,
-      Integer tenantId
+      Integer itemId
   );
 
   Page<ServiceFormItemResponseDto> getItemsByServiceForm(
       Integer serviceFormId,
-      Integer tenantId,
       Pageable pageable
   );
 
   void deleteItem(
       Integer itemId,
-      Integer tenantId,
       Integer userId
   );
 }

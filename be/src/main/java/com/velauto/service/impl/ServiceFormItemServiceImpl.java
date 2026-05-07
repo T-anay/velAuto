@@ -39,18 +39,16 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
   @Override
   public ServiceFormItemResponseDto addItemToForm(
       ServiceFormItemCreateDto request,
-      Integer tenantId,
       Integer userId
   ) {
     // Guard Clause: Validate input
-    if (request == null || tenantId == null) {
+    if (request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
     // Fetch ServiceForm - No Optional chaining
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndTenantId(
-        request.getServiceFormId(),
-        tenantId
+    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(
+        request.getServiceFormId()
     );
     if (serviceFormOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
@@ -73,9 +71,8 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
     }
 
     // Fetch ServiceCatalog - No Optional chaining
-    Optional<ServiceCatalog> catalogOptional = serviceCatalogRepository.findByIdAndTenantId(
-        request.getServiceCatalogId(),
-        tenantId
+    Optional<ServiceCatalog> catalogOptional = serviceCatalogRepository.findByIdAndDeletedAtIsNull(
+        request.getServiceCatalogId()
     );
     if (catalogOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_CATALOG_NOT_FOUND);
@@ -103,7 +100,6 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
     BigDecimal lineTotal = unitPriceQuantity.add(taxAmount);
     item.setLineTotal(lineTotal);
 
-    item.setTenantId(tenantId);
     item.setCreatedBy(userId);
     item.setCreatedAt(LocalDateTime.now());
 
@@ -111,9 +107,8 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
     ServiceFormItem savedItem = serviceFormItemRepository.save(item);
 
     // Update ServiceForm totalAmount AND totalTax
-    List<ServiceFormItem> allItems = serviceFormItemRepository.findByServiceFormIdAndTenantId(
-        request.getServiceFormId(),
-        tenantId
+    List<ServiceFormItem> allItems = serviceFormItemRepository.findByServiceFormIdAndDeletedAtIsNull(
+        request.getServiceFormId()
     );
 
     BigDecimal totalAmount = BigDecimal.ZERO;
@@ -150,14 +145,14 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
 
   @Override
   @Transactional(readOnly = true)
-  public ServiceFormItemResponseDto getItemById(Integer itemId, Integer tenantId) {
+  public ServiceFormItemResponseDto getItemById(Integer itemId) {
     // Guard Clause: Validate input
-    if (itemId == null || tenantId == null) {
+    if (itemId == null) {
       throw new BusinessException(Messages.SERVICE_FORM_ITEM_NOT_FOUND);
     }
 
     // Fetch item - No Optional chaining
-    Optional<ServiceFormItem> itemOptional = serviceFormItemRepository.findByIdAndTenantId(itemId, tenantId);
+    Optional<ServiceFormItem> itemOptional = serviceFormItemRepository.findByIdAndDeletedAtIsNull(itemId);
     if (itemOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_ITEM_NOT_FOUND);
     }
@@ -170,31 +165,29 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
   @Transactional(readOnly = true)
   public Page<ServiceFormItemResponseDto> getItemsByServiceForm(
       Integer serviceFormId,
-      Integer tenantId,
       Pageable pageable
   ) {
     // Guard Clause: Validate input
-    if (serviceFormId == null || tenantId == null || pageable == null) {
+    if (serviceFormId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Page<ServiceFormItem> items = serviceFormItemRepository.findByServiceFormIdAndTenantIdPaged(
+    Page<ServiceFormItem> items = serviceFormItemRepository.findByServiceFormIdAndDeletedAtIsNullPaged(
         serviceFormId,
-        tenantId,
         pageable
     );
     return items.map(serviceFormItemMapper::toResponseDto);
   }
 
   @Override
-  public void deleteItem(Integer itemId, Integer tenantId, Integer userId) {
+  public void deleteItem(Integer itemId, Integer userId) {
     // Guard Clause: Validate input
-    if (itemId == null || tenantId == null) {
+    if (itemId == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
     // Fetch item - No Optional chaining
-    Optional<ServiceFormItem> itemOptional = serviceFormItemRepository.findByIdAndTenantId(itemId, tenantId);
+    Optional<ServiceFormItem> itemOptional = serviceFormItemRepository.findByIdAndDeletedAtIsNull(itemId);
     if (itemOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_ITEM_NOT_FOUND);
     }
@@ -202,7 +195,7 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
     ServiceFormItem item = itemOptional.get();
 
     // Guard Clause: ServiceForm is locked?
-    Optional<ServiceForm> formForLockCheckOptional = serviceFormRepository.findByIdAndTenantId(item.getServiceFormId(), tenantId);
+    Optional<ServiceForm> formForLockCheckOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(item.getServiceFormId());
     if (formForLockCheckOptional.isPresent()) {
       ServiceForm formForLockCheck = formForLockCheckOptional.get();
       if (formForLockCheck.getIsLocked() != null && formForLockCheck.getIsLocked()) {
@@ -222,16 +215,15 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
     serviceFormItemRepository.save(item);
 
     // Recalculate ServiceForm totalAmount
-    List<ServiceFormItem> remainingItems = serviceFormItemRepository.findByServiceFormIdAndTenantId(
-        item.getServiceFormId(),
-        tenantId
+    List<ServiceFormItem> remainingItems = serviceFormItemRepository.findByServiceFormIdAndDeletedAtIsNull(
+        item.getServiceFormId()
     );
 
     BigDecimal totalAmount = remainingItems.stream()
         .map(ServiceFormItem::getLineTotal)
         .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    Optional<ServiceForm> formOptional = serviceFormRepository.findByIdAndTenantId(item.getServiceFormId(), tenantId);
+    Optional<ServiceForm> formOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(item.getServiceFormId());
     if (formOptional.isPresent()) {
       ServiceForm form = formOptional.get();
       form.setTotalAmount(totalAmount);

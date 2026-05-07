@@ -15,47 +15,41 @@ import java.util.Optional;
 @Repository
 public interface ServiceFormRepository extends JpaRepository<ServiceForm, Integer> {
 
-  // Multi-tenant queries with soft delete filter
-  @Query("SELECT sf FROM ServiceForm sf WHERE sf.id = :id AND sf.tenantId = :tenantId AND sf.deletedAt IS NULL")
-  Optional<ServiceForm> findByIdAndTenantId(
-      @Param("id") Integer id,
-      @Param("tenantId") Integer tenantId
+  // Single-tenant queries with soft delete filter
+  @Query("SELECT sf FROM ServiceForm sf WHERE sf.id = :id AND sf.deletedAt IS NULL")
+  Optional<ServiceForm> findByIdAndDeletedAtIsNull(
+      @Param("id") Integer id
   );
 
-  @Query("SELECT sf FROM ServiceForm sf WHERE sf.tenantId = :tenantId AND sf.deletedAt IS NULL")
-  Page<ServiceForm> findByTenantId(
-      @Param("tenantId") Integer tenantId,
+  @Query("SELECT sf FROM ServiceForm sf WHERE sf.deletedAt IS NULL")
+  Page<ServiceForm> findByDeletedAtIsNull(
       Pageable pageable
   );
 
-  @Query("SELECT sf FROM ServiceForm sf WHERE sf.vehicleId = :vehicleId AND sf.tenantId = :tenantId AND sf.deletedAt IS NULL")
-  Page<ServiceForm> findByVehicleIdAndTenantId(
+  @Query("SELECT sf FROM ServiceForm sf WHERE sf.vehicleId = :vehicleId AND sf.deletedAt IS NULL")
+  Page<ServiceForm> findByVehicleIdAndDeletedAtIsNull(
       @Param("vehicleId") Integer vehicleId,
-      @Param("tenantId") Integer tenantId,
       Pageable pageable
   );
 
-  @Query("SELECT sf FROM ServiceForm sf WHERE sf.status = :status AND sf.tenantId = :tenantId AND sf.deletedAt IS NULL")
-  Page<ServiceForm> findByStatusAndTenantId(
+  @Query("SELECT sf FROM ServiceForm sf WHERE sf.status = :status AND sf.deletedAt IS NULL")
+  Page<ServiceForm> findByStatusAndDeletedAtIsNull(
       @Param("status") ServiceFormStatus status,
-      @Param("tenantId") Integer tenantId,
       Pageable pageable
   );
 
-  @Query("SELECT sf FROM ServiceForm sf WHERE sf.customerId = :customerId AND sf.tenantId = :tenantId AND sf.deletedAt IS NULL")
-  Page<ServiceForm> findByCustomerIdAndTenantId(
+  @Query("SELECT sf FROM ServiceForm sf WHERE sf.customerId = :customerId AND sf.deletedAt IS NULL")
+  Page<ServiceForm> findByCustomerIdAndDeletedAtIsNull(
       @Param("customerId") Integer customerId,
-      @Param("tenantId") Integer tenantId,
       Pageable pageable
   );
 
-  @Query("SELECT sf FROM ServiceForm sf WHERE sf.appointmentId = :appointmentId AND sf.tenantId = :tenantId AND sf.deletedAt IS NULL")
-  Optional<ServiceForm> findByAppointmentIdAndTenantId(
-      @Param("appointmentId") Integer appointmentId,
-      @Param("tenantId") Integer tenantId
+  @Query("SELECT sf FROM ServiceForm sf WHERE sf.appointmentId = :appointmentId AND sf.deletedAt IS NULL")
+  Optional<ServiceForm> findByAppointmentIdAndDeletedAtIsNull(
+      @Param("appointmentId") Integer appointmentId
   );
 
-  @Query("SELECT COUNT(sf) FROM ServiceForm sf WHERE sf.tenantId = :tenantId AND sf.deletedAt IS NULL")
-  long countByTenantId(@Param("tenantId") Integer tenantId);
+  @Query("SELECT COUNT(sf) FROM ServiceForm sf WHERE sf.deletedAt IS NULL")
+  long countByDeletedAtIsNull();
 }
 

@@ -45,8 +45,6 @@ public class ServiceFormItem {
   @Column(name = "line_total", nullable = false, columnDefinition = "DECIMAL(10, 2)")
   private BigDecimal lineTotal;
 
-  @Column(name = "tenant_id", nullable = false)
-  private Integer tenantId;
 
   @Column(name = "created_by")
   private Integer createdBy;

@@ -21,8 +21,6 @@ public class ServiceCatalog {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Integer id;
 
-  @Column(name = "tenant_id", nullable = false)
-  private Integer tenantId;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "type", nullable = false)

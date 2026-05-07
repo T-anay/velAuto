@@ -12,7 +12,6 @@ import org.mapstruct.MappingTarget;
 public interface ServiceFormMapper {
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "status", expression = "java(com.velauto.entity.enums.ServiceFormStatus.OPEN)")
   @Mapping(target = "totalAmount", expression = "java(java.math.BigDecimal.ZERO)")
   @Mapping(target = "totalTax", expression = "java(java.math.BigDecimal.ZERO)")
@@ -31,7 +30,6 @@ public interface ServiceFormMapper {
   @Mapping(target = "appointmentId", ignore = true)
   @Mapping(target = "vehicleId", ignore = true)
   @Mapping(target = "customerId", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "status", ignore = true)
   @Mapping(target = "totalAmount", ignore = true)
   @Mapping(target = "totalTax", ignore = true)

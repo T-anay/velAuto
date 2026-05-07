@@ -35,18 +35,16 @@ public class PaymentServiceImpl implements PaymentService {
   @Override
   public PaymentResponseDto receivePayment(
       PaymentCreateDto request,
-      Integer tenantId,
       Integer userId
   ) {
     // Guard Clause 1: Input validation
-    if (request == null || tenantId == null) {
+    if (request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
     // Guard Clause 2: Fetch ServiceForm - No Optional chaining
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndTenantId(
-        request.getServiceFormId(),
-        tenantId
+    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(
+        request.getServiceFormId()
     );
     if (serviceFormOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
@@ -65,9 +63,8 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     // Finansal Kontrol: Calculate total payments for this ServiceForm
-    BigDecimal totalPaidAmount = paymentRepository.sumPaymentsByServiceFormAndTenant(
-        request.getServiceFormId(),
-        tenantId
+    BigDecimal totalPaidAmount = paymentRepository.sumPaymentsByServiceForm(
+        request.getServiceFormId()
     );
 
     // New payment total
@@ -83,7 +80,6 @@ public class PaymentServiceImpl implements PaymentService {
     payment.setServiceFormId(request.getServiceFormId());
     payment.setAmount(request.getAmount());
     payment.setPaymentDate(LocalDateTime.now());
-    payment.setTenantId(tenantId);
     payment.setCreatedBy(userId);
     payment.setCreatedAt(LocalDateTime.now());
 
@@ -116,14 +112,14 @@ public class PaymentServiceImpl implements PaymentService {
 
   @Override
   @Transactional(readOnly = true)
-  public PaymentResponseDto getPaymentById(Integer paymentId, Integer tenantId) {
+  public PaymentResponseDto getPaymentById(Integer paymentId, Integer userId) {
     // Guard Clause: Input validation
-    if (paymentId == null || tenantId == null) {
+    if (paymentId == null) {
       throw new BusinessException(Messages.PAYMENT_NOT_FOUND);
     }
 
     // Fetch payment - No Optional chaining
-    Optional<Payment> paymentOptional = paymentRepository.findByIdAndTenantId(paymentId, tenantId);
+    Optional<Payment> paymentOptional = paymentRepository.findByIdAndDeletedAtIsNull(paymentId);
     if (paymentOptional.isEmpty()) {
       throw new BusinessException(Messages.PAYMENT_NOT_FOUND);
     }
@@ -136,31 +132,27 @@ public class PaymentServiceImpl implements PaymentService {
   @Transactional(readOnly = true)
   public Page<PaymentResponseDto> getPaymentsByServiceForm(
       Integer serviceFormId,
-      Integer tenantId,
       Pageable pageable
   ) {
     // Guard Clause: Input validation
-    if (serviceFormId == null || tenantId == null || pageable == null) {
+    if (serviceFormId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Page<Payment> payments = paymentRepository.findByServiceFormIdAndTenantIdPaged(
+    Page<Payment> payments = paymentRepository.findByServiceFormIdAndDeletedAtIsNullPaged(
         serviceFormId,
-        tenantId,
         pageable
     );
     return payments.map(paymentMapper::toResponseDto);
   }
 
   @Override
-  public void deletePayment(Integer paymentId, Integer tenantId, Integer userId) {
-    // Guard Clause: Input validation
-    if (paymentId == null || tenantId == null) {
+  public void deletePayment(Integer paymentId, Integer userId) {
+    if (paymentId == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
-
     // Fetch payment - No Optional chaining
-    Optional<Payment> paymentOptional = paymentRepository.findByIdAndTenantId(paymentId, tenantId);
+    Optional<Payment> paymentOptional = paymentRepository.findByIdAndDeletedAtIsNull(paymentId);
     if (paymentOptional.isEmpty()) {
       throw new BusinessException(Messages.PAYMENT_NOT_FOUND);
     }

@@ -75,8 +75,7 @@ public class CustomerServiceImpl implements CustomerService {
     // DÜZELTME: customer yerine CUSTOMER yapıldı
     newUser.setRole(Role.CUSTOMER);
     newUser.setActive(true);
-    newUser.setTenantId(null);
-    newUser.setCreatedBy(currentUserId);
+        newUser.setCreatedBy(currentUserId);
 
     User savedUser = userRepository.save(newUser);
     log.info("User created for customer: userId={}", savedUser.getId());
@@ -232,11 +231,11 @@ public class CustomerServiceImpl implements CustomerService {
 
   @Override
   @Transactional(readOnly = true)
-  public Page<CustomerResponseDto> getCustomersByTenant(Integer tenantId, Pageable pageable) {
-    if (tenantId == null || tenantId <= 0) {
-      throw new BusinessException("Geçersiz Tenant ID", HttpStatus.BAD_REQUEST);
+  public Page<CustomerResponseDto> getCustomersByTenant(Pageable pageable) {
+    if (pageable == null) {
+      throw new BusinessException(Messages.INVALID_REQUEST);
     }
-    Page<Customer> customers = customerRepository.findByUser_TenantIdAndDeletedAtIsNull(tenantId, pageable);
+    Page<Customer> customers = customerRepository.findAll(pageable);
     return customers.map(customerMapper::toCustomerResponse);
   }
 

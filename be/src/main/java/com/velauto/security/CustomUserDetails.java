@@ -10,17 +10,14 @@ import java.util.Collection;
 public class CustomUserDetails extends User {
 
   private final Integer userId;
-  private final Integer tenantId;
 
   public CustomUserDetails(
       String username,
       String password,
       Collection<? extends GrantedAuthority> authorities,
-      Integer userId,
-      Integer tenantId) {
+      Integer userId) {
     super(username, password, authorities);
     this.userId = userId;
-    this.tenantId = tenantId;
   }
 
   public CustomUserDetails(
@@ -31,11 +28,9 @@ public class CustomUserDetails extends User {
       boolean credentialsNonExpired,
       boolean accountNonLocked,
       Collection<? extends GrantedAuthority> authorities,
-      Integer userId,
-      Integer tenantId) {
+      Integer userId) {
     super(username, password, enabled, accountNonExpired, credentialsNonExpired, accountNonLocked, authorities);
     this.userId = userId;
-    this.tenantId = tenantId;
   }
 }
 

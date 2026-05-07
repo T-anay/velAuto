@@ -30,7 +30,7 @@ public class ExpenseController {
       @Valid @RequestBody ExpenseCreateDto request,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    ExpenseResponseDto expense = expenseService.createExpense(request, userDetails.getTenantId(), userDetails.getUserId());
+    ExpenseResponseDto expense = expenseService.createExpense(request, userDetails.getUserId());
     return ResponseEntity.status(HttpStatus.CREATED).body(expense);
   }
 
@@ -41,7 +41,7 @@ public class ExpenseController {
       @Valid @RequestBody ExpenseUpdateDto request,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    ExpenseResponseDto expense = expenseService.updateExpense(expenseId, request, userDetails.getTenantId(), userDetails.getUserId());
+    ExpenseResponseDto expense = expenseService.updateExpense(expenseId, request, userDetails.getUserId());
     return ResponseEntity.ok(expense);
   }
 
@@ -51,7 +51,7 @@ public class ExpenseController {
       @PathVariable Integer expenseId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    expenseService.deleteExpense(expenseId, userDetails.getTenantId(), userDetails.getUserId());
+    expenseService.deleteExpense(expenseId, userDetails.getUserId());
     return ResponseEntity.noContent().build();
   }
 
@@ -61,7 +61,7 @@ public class ExpenseController {
       @PathVariable Integer expenseId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    ExpenseResponseDto expense = expenseService.getExpenseById(expenseId, userDetails.getTenantId());
+    ExpenseResponseDto expense = expenseService.getExpenseById(expenseId);
     return ResponseEntity.ok(expense);
   }
 
@@ -71,7 +71,7 @@ public class ExpenseController {
       @AuthenticationPrincipal CustomUserDetails userDetails,
       Pageable pageable
   ) {
-    Page<ExpenseResponseDto> expenses = expenseService.getAllExpensesByTenant(userDetails.getTenantId(), pageable);
+    Page<ExpenseResponseDto> expenses = expenseService.getAllExpensesByTenant(pageable);
     return ResponseEntity.ok(expenses);
   }
 }

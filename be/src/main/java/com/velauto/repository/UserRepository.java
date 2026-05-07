@@ -21,9 +21,9 @@ public interface UserRepository extends JpaRepository<User, Integer> {
   @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.deletedAt IS NULL AND u.email = :email")
   boolean existsByEmail(@Param("email") String email);
 
-  // Tenant'a göre kullanıcıları listele
-  @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.tenantId = :tenantId")
-  List<User> findByTenantIdAndDeletedAtIsNull(@Param("tenantId") Integer tenantId);
+  // Soft delete filtreli kullanıcıları listele
+  @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL")
+  List<User> findByDeletedAtIsNull();
 
   // Belirli bir kullanıcının oluşturduğu belirli role'deki kullanıcıları bul
   @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.createdBy = :createdBy AND u.role = :role")
@@ -33,7 +33,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
   @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.id = :id")
   Optional<User> findByIdAndDeletedAtIsNull(@Param("id") Integer id);
 
-  // Phone ve Tenant ile kullanıcı ara (Public booking için)
-  @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.phone = :phone AND u.tenantId = :tenantId")
-  Optional<User> findByPhoneAndTenantId(@Param("phone") String phone, @Param("tenantId") Integer tenantId);
+  // Phone ile kullanıcı ara (Public booking için)
+  @Query("SELECT u FROM User u WHERE u.deletedAt IS NULL AND u.phone = :phone")
+  Optional<User> findByPhoneAndDeletedAtIsNull(@Param("phone") String phone);
 }

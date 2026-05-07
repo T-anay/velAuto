@@ -25,7 +25,6 @@ public class PaymentResponseDto {
 
   private LocalDateTime paymentDate;
 
-  private Integer tenantId;
 
   private Integer createdBy;
 

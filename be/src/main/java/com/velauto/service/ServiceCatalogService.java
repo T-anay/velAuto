@@ -8,9 +8,9 @@ import java.util.List;
 
 public interface ServiceCatalogService {
 
-  Page<ServiceCatalogResponseDto> getServiceCatalogsByTenant(Integer tenantId, Pageable pageable);
+  Page<ServiceCatalogResponseDto> getServiceCatalogsByTenant(Pageable pageable);
 
-  List<ServiceCatalogResponseDto> getAllByTenant(Integer tenantId);
+  List<ServiceCatalogResponseDto> getAllByTenant();
 
-  ServiceCatalogResponseDto getById(Integer id, Integer tenantId);
+  ServiceCatalogResponseDto getById(Integer id, Integer userId);
 }

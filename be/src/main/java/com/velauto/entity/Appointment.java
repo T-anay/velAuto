@@ -40,8 +40,6 @@ public class Appointment {
   @Column(name = "notes", columnDefinition = "TEXT")
   private String notes;
 
-  @Column(name = "tenant_id", nullable = false)
-  private Integer tenantId;
 
   @Column(name = "created_by")
   private Integer createdBy;

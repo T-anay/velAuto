@@ -1,14 +1,8 @@
 -- liquibase formatted sql
 
 -- changeset talha:0
--- Create tenants table first (no FK dependencies)
-CREATE TABLE tenants (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  code VARCHAR(50) NOT NULL UNIQUE,
-  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-  is_active TINYINT(1) NOT NULL DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- Tenants table removed - System now operates without multi-tenancy
+-- All entities are isolated by user/organization context
 
 -- changeset talha:1
 CREATE TABLE users (

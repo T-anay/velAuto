@@ -30,7 +30,6 @@ public class PaymentController {
   ) {
     PaymentResponseDto response = paymentService.receivePayment(
         request,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -44,7 +43,7 @@ public class PaymentController {
   ) {
     PaymentResponseDto response = paymentService.getPaymentById(
         id,
-        userDetails.getTenantId()
+        null
     );
     return ResponseEntity.ok(response);
   }
@@ -60,7 +59,6 @@ public class PaymentController {
     Pageable pageable = PageRequest.of(page, size);
     Page<PaymentResponseDto> response = paymentService.getPaymentsByServiceForm(
         serviceFormId,
-        userDetails.getTenantId(),
         pageable
     );
     return ResponseEntity.ok(response);
@@ -74,7 +72,6 @@ public class PaymentController {
   ) {
     paymentService.deletePayment(
         id,
-        userDetails.getTenantId(),
         userDetails.getUserId()
     );
     return ResponseEntity.noContent().build();

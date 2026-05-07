@@ -8,14 +8,14 @@ import org.springframework.data.domain.Pageable;
 
 public interface ExpenseService {
 
-  ExpenseResponseDto createExpense(ExpenseCreateDto request, Integer tenantId, Integer userId);
+  ExpenseResponseDto createExpense(ExpenseCreateDto request, Integer userId);
 
-  ExpenseResponseDto updateExpense(Integer expenseId, ExpenseUpdateDto request, Integer tenantId, Integer userId);
+  ExpenseResponseDto updateExpense(Integer expenseId, ExpenseUpdateDto request, Integer userId);
 
-  void deleteExpense(Integer expenseId, Integer tenantId, Integer userId);
+  void deleteExpense(Integer expenseId, Integer userId);
 
-  ExpenseResponseDto getExpenseById(Integer expenseId, Integer tenantId);
+  ExpenseResponseDto getExpenseById(Integer expenseId);
 
-  Page<ExpenseResponseDto> getAllExpensesByTenant(Integer tenantId, Pageable pageable);
+  Page<ExpenseResponseDto> getAllExpensesByTenant(Pageable pageable);
 }
 

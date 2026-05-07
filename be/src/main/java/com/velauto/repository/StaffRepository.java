@@ -17,11 +17,11 @@ public interface StaffRepository extends JpaRepository<Staff, Integer> {
   @Query("SELECT s FROM Staff s WHERE s.deletedAt IS NULL AND s.user = :user")
   Optional<Staff> findByUser(@Param("user") User user);
 
-  // Tenant'a göre staff listele
-  @Query("SELECT s FROM Staff s WHERE s.deletedAt IS NULL AND s.user.tenantId = :tenantId")
-  List<Staff> findByUser_TenantIdAndDeletedAtIsNull(@Param("tenantId") Integer tenantId);
+  // Soft delete filtreli staff listele
+  @Query("SELECT s FROM Staff s WHERE s.deletedAt IS NULL")
+  List<Staff> findByDeletedAtIsNull();
 
-  // Tenant'taki staff sayısı
-  @Query("SELECT COUNT(s) FROM Staff s WHERE s.deletedAt IS NULL AND s.user.tenantId = :tenantId")
-  long countByUser_TenantId(@Param("tenantId") Integer tenantId);
+  // Soft delete filtreli staff sayısı
+  @Query("SELECT COUNT(s) FROM Staff s WHERE s.deletedAt IS NULL")
+  long countByDeletedAtIsNull();
 }

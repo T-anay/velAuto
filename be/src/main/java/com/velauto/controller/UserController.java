@@ -25,7 +25,7 @@ public class UserController {
   public ResponseEntity<UserProfileDto> getMyProfile(
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    UserProfileDto profile = userService.getMyProfile(userDetails.getUserId(), userDetails.getTenantId());
+    UserProfileDto profile = userService.getMyProfile(userDetails.getUserId());
     return ResponseEntity.ok(profile);
   }
 
@@ -36,7 +36,6 @@ public class UserController {
   ) {
     UserProfileDto updated = userService.updateMyProfile(
         userDetails.getUserId(),
-        userDetails.getTenantId(),
         dto
     );
     return ResponseEntity.ok(updated);
@@ -47,7 +46,7 @@ public class UserController {
       @Valid @RequestBody ChangePasswordDto dto,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    userService.changeMyPassword(userDetails.getUserId(), userDetails.getTenantId(), dto);
+    userService.changeMyPassword(userDetails.getUserId(), dto);
     return ResponseEntity.noContent().build();
   }
 }

@@ -26,13 +26,9 @@ public class UserServiceImpl implements UserService {
   private final PasswordEncoder passwordEncoder;
 
   @Override
-  public UserProfileDto getMyProfile(Integer userId, Integer tenantId) {
+  public UserProfileDto getMyProfile(Integer userId) {
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BusinessException("Kullanıcı bulunamadı", HttpStatus.NOT_FOUND));
-
-    if (!isSameTenant(user.getTenantId(), tenantId)) {
-      throw new BusinessException("Erişim reddedildi: Farklı tenant", HttpStatus.FORBIDDEN);
-    }
 
     return UserProfileDto.builder()
         .id(user.getId())
@@ -41,20 +37,15 @@ public class UserServiceImpl implements UserService {
         .email(user.getEmail())
         .phone(user.getPhone())
         .role(user.getRole().toString())
-        .tenantId(user.getTenantId())
         .createdAt(user.getCreatedAt())
         .build();
   }
 
   @Override
   @Transactional
-  public UserProfileDto updateMyProfile(Integer userId, Integer tenantId, UserProfileUpdateDto dto) {
+  public UserProfileDto updateMyProfile(Integer userId, UserProfileUpdateDto dto) {
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BusinessException("Kullanıcı bulunamadı", HttpStatus.NOT_FOUND));
-
-    if (!isSameTenant(user.getTenantId(), tenantId)) {
-      throw new BusinessException("Erişim reddedildi: Farklı tenant", HttpStatus.FORBIDDEN);
-    }
 
     if (dto.getFirstName() != null && !dto.getFirstName().isBlank()) {
       user.setFirstName(dto.getFirstName());
@@ -84,20 +75,15 @@ public class UserServiceImpl implements UserService {
         .email(updatedUser.getEmail())
         .phone(updatedUser.getPhone())
         .role(updatedUser.getRole().toString())
-        .tenantId(updatedUser.getTenantId())
         .createdAt(updatedUser.getCreatedAt())
         .build();
   }
 
   @Override
   @Transactional
-  public void changeMyPassword(Integer userId, Integer tenantId, ChangePasswordDto dto) {
+  public void changeMyPassword(Integer userId, ChangePasswordDto dto) {
     User user = userRepository.findByIdAndDeletedAtIsNull(userId)
         .orElseThrow(() -> new BusinessException("Kullanıcı bulunamadı", HttpStatus.NOT_FOUND));
-
-    if (!isSameTenant(user.getTenantId(), tenantId)) {
-      throw new BusinessException("Erişim reddedildi: Farklı tenant", HttpStatus.FORBIDDEN);
-    }
 
     if (!passwordEncoder.matches(dto.getOldPassword(), user.getPasswordHash())) {
       throw new BusinessException("Eski şifre yanlış", HttpStatus.UNAUTHORIZED);
@@ -117,11 +103,5 @@ public class UserServiceImpl implements UserService {
     userRepository.save(user);
   }
 
-  private boolean isSameTenant(Integer userTenant, Integer contextTenant) {
-    if (contextTenant == null) {
-      return true;
-    }
-    return userTenant != null && userTenant.equals(contextTenant);
-  }
 }
 

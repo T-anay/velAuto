@@ -24,7 +24,7 @@ public interface VehicleService {
 
   Page<VehicleResponseDto> getAssignedVehicles(Integer staffId, Pageable pageable);
 
-  Page<VehicleResponseDto> getAllVehicles(Integer tenantId, Pageable pageable);
+  Page<VehicleResponseDto> getAllVehicles(Pageable pageable);
 
   VehicleResponseDto assignStaff(Integer vehicleId, AssignStaffDto request, Integer currentUserId);
 

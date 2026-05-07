@@ -15,34 +15,30 @@ import java.util.Optional;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Integer> {
 
-  @Query("SELECT p FROM Payment p WHERE p.id = :id AND p.tenantId = :tenantId AND p.deletedAt IS NULL")
-  Optional<Payment> findByIdAndTenantId(
-      @Param("id") Integer id,
-      @Param("tenantId") Integer tenantId
+  @Query("SELECT p FROM Payment p WHERE p.id = :id AND p.deletedAt IS NULL")
+  Optional<Payment> findByIdAndDeletedAtIsNull(
+      @Param("id") Integer id
   );
 
-  @Query("SELECT p FROM Payment p WHERE p.serviceFormId = :serviceFormId AND p.tenantId = :tenantId AND p.deletedAt IS NULL")
-  List<Payment> findByServiceFormIdAndTenantId(
-      @Param("serviceFormId") Integer serviceFormId,
-      @Param("tenantId") Integer tenantId
+  @Query("SELECT p FROM Payment p WHERE p.serviceFormId = :serviceFormId AND p.deletedAt IS NULL")
+  List<Payment> findByServiceFormIdAndDeletedAtIsNull(
+      @Param("serviceFormId") Integer serviceFormId
   );
 
-  @Query("SELECT p FROM Payment p WHERE p.serviceFormId = :serviceFormId AND p.tenantId = :tenantId AND p.deletedAt IS NULL")
-  Page<Payment> findByServiceFormIdAndTenantIdPaged(
+  @Query("SELECT p FROM Payment p WHERE p.serviceFormId = :serviceFormId AND p.deletedAt IS NULL")
+  Page<Payment> findByServiceFormIdAndDeletedAtIsNullPaged(
       @Param("serviceFormId") Integer serviceFormId,
-      @Param("tenantId") Integer tenantId,
       Pageable pageable
   );
 
-  @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.serviceFormId = :serviceFormId AND p.tenantId = :tenantId AND p.deletedAt IS NULL")
-  BigDecimal sumPaymentsByServiceFormAndTenant(
-      @Param("serviceFormId") Integer serviceFormId,
-      @Param("tenantId") Integer tenantId
+  @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.serviceFormId = :serviceFormId AND p.deletedAt IS NULL")
+  BigDecimal sumPaymentsByServiceForm(
+      @Param("serviceFormId") Integer serviceFormId
   );
 
-  @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.tenantId = :tenantId AND YEAR(p.paymentDate) = YEAR(CURRENT_DATE) AND MONTH(p.paymentDate) = MONTH(CURRENT_DATE) AND p.deletedAt IS NULL")
-  BigDecimal getMonthlyRevenue(@Param("tenantId") Integer tenantId);
+  @Query("SELECT COALESCE(SUM(p.amount), 0) FROM Payment p WHERE YEAR(p.paymentDate) = YEAR(CURRENT_DATE) AND MONTH(p.paymentDate) = MONTH(CURRENT_DATE) AND p.deletedAt IS NULL")
+  BigDecimal getMonthlyRevenue();
 
-  @Query("SELECT p.paymentMethod, COALESCE(SUM(p.amount), 0) FROM Payment p WHERE p.tenantId = :tenantId AND YEAR(p.paymentDate) = YEAR(CURRENT_DATE) AND MONTH(p.paymentDate) = MONTH(CURRENT_DATE) AND p.deletedAt IS NULL GROUP BY p.paymentMethod")
-  java.util.List<Object[]> getRevenueByPaymentMethod(@Param("tenantId") Integer tenantId);
+  @Query("SELECT p.paymentMethod, COALESCE(SUM(p.amount), 0) FROM Payment p WHERE YEAR(p.paymentDate) = YEAR(CURRENT_DATE) AND MONTH(p.paymentDate) = MONTH(CURRENT_DATE) AND p.deletedAt IS NULL GROUP BY p.paymentMethod")
+  java.util.List<Object[]> getRevenueByPaymentMethod();
 }

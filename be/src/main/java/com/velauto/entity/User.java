@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_tenant_phone", columnNames = {"tenant_id", "phone"})
+        @UniqueConstraint(name = "uk_users_phone", columnNames = {"phone"})
 })
 public class User {
 
@@ -39,8 +39,6 @@ public class User {
   @Column(name = "created_by")
   private Integer createdBy;
 
-  @Column(name = "tenant_id")
-  private Integer tenantId;
 
   @Column(name = "updated_by")
   private Integer updatedBy;

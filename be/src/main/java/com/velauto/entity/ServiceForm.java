@@ -59,8 +59,6 @@ public class ServiceForm {
   @Column(name = "is_locked", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
   private Boolean isLocked = false;
 
-  @Column(name = "tenant_id", nullable = false)
-  private Integer tenantId;
 
   @Column(name = "created_by")
   private Integer createdBy;

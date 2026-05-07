@@ -21,7 +21,6 @@ public interface AuthMapper {
   @Mapping(target = "userId", source = "user.id")
   @Mapping(target = "email", source = "user.email")
   @Mapping(target = "role", source = "user.role")
-  @Mapping(target = "tenantId", source = "user.tenantId")
   @Mapping(target = "tokenType", constant = "Bearer")
   AuthResponseDto toAuthResponse(User user, String accessToken, RefreshToken refreshToken);
 
@@ -37,7 +36,6 @@ public interface AuthMapper {
   @Mapping(target = "userId", source = "user.id")
   @Mapping(target = "email", source = "user.email")
   @Mapping(target = "role", source = "user.role")
-  @Mapping(target = "tenantId", source = "user.tenantId")
   @Mapping(target = "tokenType", constant = "Bearer")
   AuthResponseDto toAuthResponse(User user, String accessToken, String refreshTokenValue);
 }

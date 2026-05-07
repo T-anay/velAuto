@@ -30,9 +30,9 @@ public class ServiceCatalogController {
       @RequestParam(required = false) Integer tenantId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    Integer tId = tenantId != null ? tenantId : (userDetails != null ? userDetails.getTenantId() : 1);
+    Integer tId = tenantId != null ? tenantId : 1;
     Pageable pageable = PageRequest.of(page, size);
-    Page<ServiceCatalogResponseDto> result = service.getServiceCatalogsByTenant(tId, pageable);
+    Page<ServiceCatalogResponseDto> result = service.getServiceCatalogsByTenant(pageable);
     return ResponseEntity.ok(result);
   }
 
@@ -41,8 +41,8 @@ public class ServiceCatalogController {
       @RequestParam(required = false) Integer tenantId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    Integer tId = tenantId != null ? tenantId : (userDetails != null ? userDetails.getTenantId() : 1);
-    List<ServiceCatalogResponseDto> list = service.getAllByTenant(tId);
+    Integer tId = tenantId != null ? tenantId : 1;
+    List<ServiceCatalogResponseDto> list = service.getAllByTenant();
     return ResponseEntity.ok(list);
   }
 
@@ -52,7 +52,7 @@ public class ServiceCatalogController {
       @RequestParam(required = false) Integer tenantId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    Integer tId = tenantId != null ? tenantId : (userDetails != null ? userDetails.getTenantId() : 1);
+    Integer tId = tenantId != null ? tenantId : 1;
     ServiceCatalogResponseDto dto = service.getById(id, tId);
     return ResponseEntity.ok(dto);
   }

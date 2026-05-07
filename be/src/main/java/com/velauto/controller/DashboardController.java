@@ -25,7 +25,7 @@ public class DashboardController {
   public ResponseEntity<DashboardSummaryResponseDto> getSummary(
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    DashboardSummaryResponseDto summary = dashboardService.getSummary(userDetails.getTenantId());
+    DashboardSummaryResponseDto summary = dashboardService.getSummary();
 
     return ResponseEntity.ok(summary);
   }

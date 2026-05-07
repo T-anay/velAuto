@@ -26,7 +26,6 @@ public interface UserMapper {
   @Mapping(target = "role", constant = "CUSTOMER") // DÜZELTİLDİ
   @Mapping(target = "active", constant = "true")
   @Mapping(target = "createdBy", ignore = true)
-  @Mapping(target = "tenantId", ignore = true)
   @Mapping(target = "updatedBy", ignore = true)
   @Mapping(target = "updatedAt", ignore = true)
   @Mapping(target = "deletedAt", ignore = true)
@@ -40,7 +39,6 @@ public interface UserMapper {
    * @param request AdminCreateDto DTO
    * @param encodedPassword Şifrelenmiş şifre
    * @param createdBy Oluşturan kullanıcı ID
-   * @param tenantId Tenant ID
    * @return Admin User entity
    */
   @Mapping(target = "id", ignore = true)
@@ -52,13 +50,12 @@ public interface UserMapper {
   @Mapping(target = "role", constant = "ADMIN") // DÜZELTİLDİ
   @Mapping(target = "active", constant = "true")
   @Mapping(target = "createdBy", source = "createdBy")
-  @Mapping(target = "tenantId", source = "tenantId")
   @Mapping(target = "updatedBy", ignore = true)
   @Mapping(target = "updatedAt", ignore = true)
   @Mapping(target = "deletedAt", ignore = true)
   @Mapping(target = "deletedBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
-  User toAdminUser(AdminCreateDto request, String encodedPassword, Integer createdBy, Integer tenantId);
+  User toAdminUser(AdminCreateDto request, String encodedPassword, Integer createdBy);
 
   /**
    * StaffCreateDto'ten Staff User oluşturur
@@ -66,7 +63,6 @@ public interface UserMapper {
    * @param request StaffCreateDto DTO
    * @param encodedPassword Şifrelenmiş şifre
    * @param createdBy Oluşturan kullanıcı ID
-   * @param tenantId Tenant ID
    * @return Staff User entity
    */
   @Mapping(target = "id", ignore = true)
@@ -78,13 +74,12 @@ public interface UserMapper {
   @Mapping(target = "role", constant = "STAFF") // DÜZELTİLDİ
   @Mapping(target = "active", constant = "true")
   @Mapping(target = "createdBy", source = "createdBy")
-  @Mapping(target = "tenantId", source = "tenantId")
   @Mapping(target = "updatedBy", ignore = true)
   @Mapping(target = "updatedAt", ignore = true)
   @Mapping(target = "deletedAt", ignore = true)
   @Mapping(target = "deletedBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
-  User toStaffUser(StaffCreateDto request, String encodedPassword, Integer createdBy, Integer tenantId);
+  User toStaffUser(StaffCreateDto request, String encodedPassword, Integer createdBy);
 
   /**
    * Ad-Soyad ayrışma: "John Doe" -> "John"
