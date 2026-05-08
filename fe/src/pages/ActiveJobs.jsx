@@ -3,9 +3,21 @@ import { useService } from '../context/ServiceContext';
 import { useNavigate } from 'react-router-dom';
 
 export default function ActiveJobs() {
-    const { jobs } = useService();
+    const { jobs, deleteJob } = useService();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, plate: '' });
+
+    const confirmDelete = async () => {
+        if (deleteModal.id) {
+            try {
+                await deleteJob(deleteModal.id);
+            } catch (err) {
+                console.error('Silme hatası:', err);
+            }
+            setDeleteModal({ isOpen: false, id: null, plate: '' });
+        }
+    };
 
     const filteredJobs = (jobs || [])
         .filter(job => job.status !== 'COMPLETED')
@@ -63,10 +75,49 @@ export default function ActiveJobs() {
                                 </div>
                                 <p className="text-gray-400 font-semibold text-sm mb-2">{job.customer} • <span className="text-gray-600 text-xs">{job.brand}</span></p>
 
-
+                                <div className="flex gap-2 mt-4 pt-3 border-t border-[var(--border-strong)]/30">
+                                    <button 
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            setDeleteModal({ isOpen: true, id: job.id, plate: job.plate }); 
+                                        }} 
+                                        className="flex-1 text-xs text-[var(--danger)] border border-[var(--danger)]/30 px-3 py-2 rounded-lg uppercase font-black hover:bg-[var(--danger)] hover:text-[var(--text-primary)] transition-colors tracking-widest"
+                                    >
+                                        SİL
+                                    </button>
+                                </div>
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Silme Onay Pop-up Modal */}
+            {deleteModal.isOpen && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className="bg-[var(--bg-card)] p-8 rounded-2xl shadow-2xl border border-[var(--border-strong)] w-full max-w-sm text-center animate-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 rounded-full bg-[var(--danger)]/10 flex items-center justify-center mx-auto mb-4 border border-[var(--danger)]/30">
+                            <span className="text-[var(--danger)] font-black text-3xl">!</span>
+                        </div>
+                        <h3 className="text-xl font-black mb-2 text-[var(--text-primary)] uppercase tracking-widest">İŞ SİLİNİYOR</h3>
+                        <p className="text-gray-400 text-sm mb-8">
+                            <span className="text-[var(--accent)] font-bold">{deleteModal.plate}</span> plakalı işi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+                        </p>
+                        <div className="flex gap-4">
+                            <button 
+                                onClick={() => setDeleteModal({ isOpen: false, id: null, plate: '' })} 
+                                className="flex-1 p-4 bg-transparent border border-[var(--border-strong)] text-[var(--text-primary)] font-black rounded-xl hover:bg-[var(--border-strong)] transition-all uppercase tracking-widest text-xs"
+                            >
+                                İPTAL
+                            </button>
+                            <button 
+                                onClick={confirmDelete} 
+                                className="flex-1 p-4 bg-[var(--danger)] text-[var(--text-primary)] font-black rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-lg uppercase tracking-widest text-xs"
+                            >
+                                EVET, SİL
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
