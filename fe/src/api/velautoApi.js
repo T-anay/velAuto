@@ -208,7 +208,7 @@ export const normalizeServiceForm = (form, customerLookup = new Map(), vehicleLo
     complaint: normalizeText(form?.description, form?.complaint, vehicle?.complaint),
     status: jobStatus.status,
     color: jobStatus.color,
-  items,
+    items,
     assignedStaffId: form?.assignedStaffId ?? null,
     total: toNumber(form?.totalAmount ?? form?.total, totalFromItems),
     paid: Boolean(form?.paid),
@@ -387,7 +387,8 @@ export const api = {
     create: (payload) => request('/api/v1/appointments', { method: 'POST', body: payload }),
     update: (id, payload) => request(`/api/v1/appointments/${id}`, { method: 'PUT', body: payload }),
     remove: (id) => request(`/api/v1/appointments/${id}`, { method: 'DELETE' }),
-    createPublic: (payload) => request('/api/public/appointments', { method: 'POST', auth: false, body: payload }),
+    createPublic: (payload) => request('/api/v1/appointments/public-book', { method: 'POST', auth: false, body: payload }),
+    revise: (id, payload) => request(`/api/v1/appointments/${id}/revise`, { method: 'POST', body: payload }),
   },
   serviceCatalog: {
     list: (params = '') => request(`/api/v1/service-catalogs${params}`),

@@ -28,26 +28,26 @@ export default function Sidebar() {
 
   const unreadCount = useMemo(() => {
     // eslint-disable-next-line no-unused-expressions
-    readStateVersion; 
+    readStateVersion;
 
     try {
       const raw = localStorage.getItem('velauto_notifications_state_v1');
       const readState = raw ? JSON.parse(raw) : {};
-      
+
       let count = 0;
       if (!readState['stock-1']) count++;
       if (!readState['stock-2']) count++;
-      
+
       const completedJobs = jobs.filter((job) => String(job.statusKey || job.status).toUpperCase() === 'COMPLETED').slice(0, 10);
       completedJobs.forEach(job => {
         if (!readState[`job-${job.id}`]) count++;
       });
-      
+
       const recentPayments = payments.slice(0, 10);
       recentPayments.forEach(payment => {
         if (!readState[`payment-${payment.id}`]) count++;
       });
-      
+
       return count;
     } catch {
       return 0;
@@ -104,18 +104,18 @@ export default function Sidebar() {
         {menuItems.map((item) => {
           const badgeText = item.path === '/bildirimler' ? displayBadge : item.badge;
           return (
-          <div
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            className={`px-6 py-4 cursor-pointer transition-all flex items-center gap-4 font-semibold
+            <div
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`px-6 py-4 cursor-pointer transition-all flex items-center gap-4 font-semibold
               ${location.pathname === item.path
-                ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-l-4 border-[var(--accent)]'
-                : 'text-gray-400 hover:bg-[var(--bg-card)] hover:text-[var(--text-primary)] border-l-4 border-transparent'}`}
-          >
-            <span className="text-lg">•</span>
-            <span>{item.label}</span>
-            {badgeText && <span className="ml-auto rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black text-white">{badgeText}</span>}
-          </div>
+                  ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-l-4 border-[var(--accent)]'
+                  : 'text-gray-400 hover:bg-[var(--bg-card)] hover:text-[var(--text-primary)] border-l-4 border-transparent'}`}
+            >
+              <span className="text-lg">•</span>
+              <span>{item.label}</span>
+              {badgeText && <span className="ml-auto rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black text-white">{badgeText}</span>}
+            </div>
           );
         })}
       </nav>

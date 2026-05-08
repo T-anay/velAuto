@@ -60,4 +60,3 @@ public class NotificationServiceImpl implements NotificationService {
     System.out.println("=".repeat(80));
   }
 }
-

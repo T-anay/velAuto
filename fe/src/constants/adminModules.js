@@ -239,6 +239,31 @@ export const adminModules = {
     primaryAction: 'Faturaları Aç',
     secondaryAction: 'Ödeme Geçmişi',
   },
+  aiSettings: {
+    path: '/ai-ayarlari',
+    title: 'AI Fiyat ve Carpan Ayarlari',
+    eyebrow: 'Konfigurasyon / Admin',
+    description: 'AI analizinde kullanilan hasar kategorilerinin baz fiyatlarini ve marka segment carpanlarini buradan yonetebilirsiniz.',
+    backend: 'Local Storage Persistence',
+    accent: 'Dinamik fiyatlandirma kontrol paneli.',
+    stats: [
+      { label: 'Kategori', value: '11' },
+      { label: 'Segment', value: '4' },
+      { label: 'Kayit', value: 'Local' },
+    ],
+    sections: [
+      {
+        title: 'Baz Fiyatlar',
+        items: ['Kaporta onarim', 'Cam degisimi', 'Boya iscilik', 'Far stop onarim'],
+      },
+      {
+        title: 'Segmentler',
+        items: ['Premium x1.25', 'Economy x0.9', 'Luxury x1.6', 'Standard x1.0'],
+      },
+    ],
+    primaryAction: 'Ayarlari Ac',
+    secondaryAction: 'Varsayilana Don',
+  },
 };
 
 export const adminModuleList = [
@@ -247,6 +272,7 @@ export const adminModuleList = [
   adminModules.staff,
   adminModules.appointments,
   adminModules.ai,
+  adminModules.aiSettings,
   adminModules.audits,
   adminModules.invoices,
 ];

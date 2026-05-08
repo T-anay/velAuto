@@ -131,15 +131,30 @@ class OllamaClient:
 
             return f"{s1.rstrip('.')} . {s2.rstrip('.')} . {s3.rstrip('.')} .".replace(" .", ".")
 
-        sentence_parts = [part.strip() for part in compact.split(".") if part.strip()]
-        if not sentence_parts:
-            sentence_parts = [compact]
+        def clean_line(line: str) -> str:
+            # Remove common prefixes and numbering
+            prefixes = [
+                "1)", "2)", "3)", 
+                "Kisa Ozet:", "Kısa Özet:", "Kisa Ozeti:", "Kısa Özeti:",
+                "Tahmini Islem:", "Tahmini İşlem:", "Islem:", "İşlem:",
+                "Usta Notu:", "Usta Gorusu:", "Usta Görüşü:",
+                "-", "*", ":"
+            ]
+            cleaned = line.strip()
+            for p in prefixes:
+                if cleaned.lower().startswith(p.lower()):
+                    cleaned = cleaned[len(p):].strip()
+            return cleaned
+
+        cleaned_parts = [clean_line(p) for p in sentence_parts if clean_line(p)]
+        if not cleaned_parts:
+            cleaned_parts = [compact]
 
         def clamp(value: str, max_len: int) -> str:
             return value if len(value) <= max_len else value[: max_len - 3].rstrip() + "..."
 
-        s1 = clamp(sentence_parts[0], 100)
-        s2 = clamp(sentence_parts[1] if len(sentence_parts) > 1 else "Hasara uygun cozum icin teknik kontrol onerilir", 100)
-        s3 = clamp(sentence_parts[2] if len(sentence_parts) > 2 else "Sonraki asamada usta gorusu ile detaylari girin", 100)
+        s1 = clamp(cleaned_parts[0], 100)
+        s2 = clamp(cleaned_parts[1] if len(cleaned_parts) > 1 else "Hasara uygun cozum icin teknik kontrol onerilir", 100)
+        s3 = clamp(cleaned_parts[2] if len(cleaned_parts) > 2 else "Sonraki asamada usta gorusu ile detaylari girin", 100)
 
-        return f"{s1}. {s2}. {s3}."
+        return f"1) Kisa Ozet: {s1}\n2) Tahmini Islem: {s2}\n3) Usta Notu: {s3}"

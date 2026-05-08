@@ -50,3 +50,5 @@ public class PublicAppointmentRequestDto {
   private MultipartFile damageImage;
 }
 
+//  private MultipartFile damageImage;
+}

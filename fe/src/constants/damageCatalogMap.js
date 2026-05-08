@@ -10,6 +10,20 @@ export const aiCatalogCategories = [
   'Elektrik Diagnostik',
 ];
 
+const DEFAULT_PRICES = {
+  'Kaporta Onarim': 2500,
+  'Boya Islemi': 1800,
+  'Cam Onarim': 1200,
+  'Tampon Onarim': 1500,
+  'Far Stop Onarim': 950,
+  'Mekanik Kontrol': 1000,
+  'Fren Sistemi': 1400,
+  'Lastik Jant': 800,
+  'Elektrik Diagnostik': 1100,
+};
+
+export const damagePrices = JSON.parse(localStorage.getItem('AI_DAMAGE_PRICES')) || DEFAULT_PRICES;
+
 export const damageCatalogMap = {
   gocuk: ['Kaporta Onarim', 'Boya Islemi'],
   dent: ['Kaporta Onarim', 'Boya Islemi'],

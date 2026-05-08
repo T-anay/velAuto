@@ -32,12 +32,10 @@ public class AppointmentController {
   @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'admin', 'manager', 'staff')")
   public ResponseEntity<AppointmentResponseDto> createAppointment(
       @Valid @RequestBody AppointmentCreateDto request,
-      @AuthenticationPrincipal CustomUserDetails userDetails
-  ) {
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
     AppointmentResponseDto response = appointmentService.createAppointment(
         request,
-        userDetails.getUserId()
-    );
+        userDetails.getUserId());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
@@ -45,12 +43,10 @@ public class AppointmentController {
   @PreAuthorize("hasAnyRole('admin', 'manager', 'staff', 'customer')")
   public ResponseEntity<AppointmentResponseDto> getAppointmentById(
       @PathVariable Integer id,
-      @AuthenticationPrincipal CustomUserDetails userDetails
-  ) {
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
     AppointmentResponseDto response = appointmentService.getAppointmentById(
         id,
-        userDetails.getUserId()
-    );
+        userDetails.getUserId());
     return ResponseEntity.ok(response);
   }
 
@@ -59,12 +55,10 @@ public class AppointmentController {
   public ResponseEntity<Page<AppointmentResponseDto>> getAppointmentsByTenant(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
-      @AuthenticationPrincipal CustomUserDetails userDetails
-  ) {
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
     Pageable pageable = PageRequest.of(page, size);
     Page<AppointmentResponseDto> response = appointmentService.getAppointmentsByTenant(
-        pageable
-    );
+        pageable);
     return ResponseEntity.ok(response);
   }
 
@@ -74,13 +68,11 @@ public class AppointmentController {
       @PathVariable Integer customerId,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
-      @AuthenticationPrincipal CustomUserDetails userDetails
-  ) {
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
     Pageable pageable = PageRequest.of(page, size);
     Page<AppointmentResponseDto> response = appointmentService.getAppointmentsByCustomer(
         customerId,
-        pageable
-    );
+        pageable);
     return ResponseEntity.ok(response);
   }
 
@@ -90,13 +82,11 @@ public class AppointmentController {
       @PathVariable Integer vehicleId,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
-      @AuthenticationPrincipal CustomUserDetails userDetails
-  ) {
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
     Pageable pageable = PageRequest.of(page, size);
     Page<AppointmentResponseDto> response = appointmentService.getAppointmentsByVehicle(
         vehicleId,
-        pageable
-    );
+        pageable);
     return ResponseEntity.ok(response);
   }
 
@@ -105,12 +95,10 @@ public class AppointmentController {
   public ResponseEntity<List<AppointmentResponseDto>> getAppointmentsByDateRange(
       @RequestParam LocalDateTime startDate,
       @RequestParam LocalDateTime endDate,
-      @AuthenticationPrincipal CustomUserDetails userDetails
-  ) {
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
     List<AppointmentResponseDto> response = appointmentService.getAppointmentsByDateRange(
         startDate,
-        endDate
-    );
+        endDate);
     return ResponseEntity.ok(response);
   }
 
@@ -119,13 +107,11 @@ public class AppointmentController {
   public ResponseEntity<AppointmentResponseDto> updateAppointment(
       @PathVariable Integer id,
       @Valid @RequestBody AppointmentUpdateDto request,
-      @AuthenticationPrincipal CustomUserDetails userDetails
-  ) {
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
     AppointmentResponseDto response = appointmentService.updateAppointment(
         id,
         request,
-        userDetails.getUserId()
-    );
+        userDetails.getUserId());
     return ResponseEntity.ok(response);
   }
 
@@ -133,13 +119,31 @@ public class AppointmentController {
   @PreAuthorize("hasAnyRole('admin', 'manager', 'staff')")
   public ResponseEntity<Void> deleteAppointment(
       @PathVariable Integer id,
-      @AuthenticationPrincipal CustomUserDetails userDetails
-  ) {
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
     appointmentService.deleteAppointment(
         id,
-        userDetails.getUserId()
-    );
+        userDetails.getUserId());
     return ResponseEntity.noContent().build();
   }
 
+  @PostMapping("/{id}/revise")
+  @PreAuthorize("hasAnyRole('admin', 'manager', 'staff')")
+  public ResponseEntity<AppointmentResponseDto> reviseAppointment(
+      @PathVariable Integer id,
+      @RequestBody com.velauto.dto.AppointmentReviseDto request,
+      @AuthenticationPrincipal CustomUserDetails userDetails) {
+    AppointmentResponseDto response = appointmentService.reviseAppointment(
+        id,
+        request.getNewDate(),
+        request.getNotes(),
+        userDetails.getUserId());
+    return ResponseEntity.ok(response);
+  }
+
+  @PostMapping("/public-book")
+  public ResponseEntity<AppointmentResponseDto> bookPublicAppointment(
+      @Valid @RequestBody com.velauto.dto.PublicAppointmentRequestDto request) {
+    AppointmentResponseDto response = appointmentService.bookOnlineAppointment(request);
+    return ResponseEntity.ok(response);
+  }
 }

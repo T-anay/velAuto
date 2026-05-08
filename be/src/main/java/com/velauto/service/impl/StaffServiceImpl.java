@@ -12,6 +12,7 @@ import com.velauto.mapper.StaffMapper;
 import com.velauto.repository.StaffRepository;
 import com.velauto.repository.UserRepository;
 import com.velauto.service.AuditLogService;
+import com.velauto.service.EmailService;
 import com.velauto.service.StaffService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class StaffServiceImpl implements StaffService {
   private final PasswordEncoder passwordEncoder;
   private final StaffMapper staffMapper;
   private final AuditLogService auditLogService;
+  private final EmailService emailService;
 
   @Override
   @Transactional
@@ -97,7 +99,14 @@ public class StaffServiceImpl implements StaffService {
 
     Staff savedStaff = staffRepository.save(staff);
 
-    // LOG: (İleride Mail Servisi buraya eklenecek)
+    // 5. MAIL GÖNDER (Personel'e bilgilerini ilet)
+    try {
+        emailService.sendStaffWelcomeEmail(savedUser.getEmail(), fullName, rawPassword);
+        log.info("Personel hoş geldin maili sıraya alındı: {}", savedUser.getEmail());
+    } catch (Exception e) {
+        log.error("Mail gönderilirken bir hata oluştu: {}", e.getMessage());
+    }
+
     log.info("YENİ PERSONEL OLUŞTURULDU -> Email: {} | Şifre: {}", savedUser.getEmail(), rawPassword);
 
     auditLogService.log(currentUserId, "STAFF_CREATED", "STAFF", savedStaff.getId(),

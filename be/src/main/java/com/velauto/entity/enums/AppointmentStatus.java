@@ -3,6 +3,7 @@ package com.velauto.entity.enums;
 public enum AppointmentStatus {
   PENDING("Beklemede"),
   APPROVED("Onaylandı"),
+  REVISED("Revize Edildi"),
   COMPLETED("Tamamlandı"),
   CANCELLED("İptal Edildi");
 
@@ -16,4 +17,3 @@ public enum AppointmentStatus {
     return displayName;
   }
 }
-

@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import BackButton from '../components/BackButton';
 import { pushToast } from '../lib/toastBus';
-import { aiCatalogCategories, mapDamageToCatalog } from '../constants/damageCatalogMap';
+import { aiCatalogCategories, mapDamageToCatalog, damagePrices } from '../constants/damageCatalogMap';
 import { applyBrandMultiplier, getBrandTier } from '../constants/brandTiers';
+import { carBrands } from '../constants/carData';
 
 const KEYWORD_MAP = [
   { keywords: ['titreme', 'sarsinti', 'vibrasyon'], suggestion: 'Mekanik Kontrol', confidence: 84 },
@@ -19,7 +20,9 @@ export default function AIAnalysis() {
   const [analysisRunAt, setAnalysisRunAt] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(aiCatalogCategories[0]);
   const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
   const [remoteSuggestions, setRemoteSuggestions] = useState([]);
+  const [aiReport, setAiReport] = useState('');
   const [selectedSuggestions, setSelectedSuggestions] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
 
@@ -46,33 +49,42 @@ export default function AIAnalysis() {
     const next = [];
 
     try {
-      const ollama = await fetch('http://localhost:11434/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'llama3', prompt: `Bu sikayeti servis katalog kategorilerine esle: ${complaintText}`, stream: false }),
-      }).then((res) => (res.ok ? res.json() : null));
-
-      if (ollama?.response) {
-        next.push({ type: 'OLLAMA', label: ollama.response.slice(0, 120), confidence: 80 });
-      }
-    } catch {
-      // Keyword fallback below remains active.
-    }
-
-    if (uploadedFiles.length > 0) {
-      try {
+      if (uploadedFiles.length > 0) {
         const formData = new FormData();
-        uploadedFiles.forEach((file) => formData.append('files', file));
-        const yolo = await fetch('http://localhost:8000/analyze', { method: 'POST', body: formData }).then((res) => (res.ok ? res.json() : null));
-        const detections = Array.isArray(yolo?.detections) ? yolo.detections : [];
-        detections.forEach((detection) => {
-          mapDamageToCatalog(detection.label || detection.name).forEach((category) => {
-            next.push({ type: 'YOLO', label: category, confidence: Math.round((detection.confidence || 0.75) * 100) });
-          });
+        formData.append('image', uploadedFiles[0]);
+        formData.append('description', complaintText || `${brand} ${model} arac kontrolu`);
+
+        const response = await fetch('http://localhost:8000/analyze-damage', {
+          method: 'POST',
+          body: formData,
         });
-      } catch {
-        // Filename fallback below remains active.
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.detected_damages) {
+            const detected = data.detected_damages.map((det) => ({
+              type: 'YOLO',
+              label: det.label,
+              confidence: Math.round(det.confidence * 100)
+            }));
+            next.push(...detected);
+          }
+          if (data.ai_analysis_report) {
+            setAiReport(data.ai_analysis_report);
+          }
+        }
+      } else {
+        const formData = new FormData();
+        formData.append('description', complaintText || `${brand} ${model} servis talebi`);
+        const response = await fetch('http://localhost:8000/analyze-text', { method: 'POST', body: formData });
+        if (response.ok) {
+          const data = await response.json();
+          setAiReport(data.ai_analysis_report);
+        }
       }
+    } catch (err) {
+      console.error('AI Analiz hatasi:', err);
+      pushToast({ type: 'error', title: 'Analiz Hatasi', message: 'AI servisi calismiyor olabilir.' });
     }
 
     setRemoteSuggestions(next);
@@ -86,7 +98,33 @@ export default function AIAnalysis() {
   };
 
   const tier = getBrandTier(brand);
-  const estimatedPrice = applyBrandMultiplier(1000, brand);
+
+  const estimatedPrice = useMemo(() => {
+    // Collect all unique categories from suggestions
+    const categories = new Set();
+    remoteSuggestions.forEach((s) => {
+      if (s.type === 'YOLO') {
+        mapDamageToCatalog(s.label).forEach((c) => categories.add(c));
+      }
+    });
+
+    // Fallback: If no YOLO detections, try matching from AI report text or complaint
+    if (categories.size === 0) {
+      const textToScan = (aiReport + ' ' + complaintText).toLowerCase();
+      mapDamageToCatalog(textToScan).forEach((c) => categories.add(c));
+    }
+
+    // Sum base prices
+    let baseTotal = 0;
+    categories.forEach((cat) => {
+      baseTotal += damagePrices[cat] || 0;
+    });
+
+    // If still 0, use a generic base price
+    if (baseTotal === 0) baseTotal = 1000;
+
+    return applyBrandMultiplier(baseTotal, brand);
+  }, [remoteSuggestions, aiReport, complaintText, brand]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -98,17 +136,59 @@ export default function AIAnalysis() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-black text-[var(--text-primary)]">Analiz Girdileri</h2>
-          <textarea value={complaintText} onChange={(e) => setComplaintText(e.target.value)} className="w-full mt-4 p-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] min-h-36" placeholder="Sikayet metni..." />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-            <input value={brand} onChange={(e) => setBrand(e.target.value)} className="p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]" placeholder="Marka carpani icin marka" />
-            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]">
-              {aiCatalogCategories.map((category) => <option key={category}>{category}</option>)}
+          <h2 className="text-xl font-black text-[var(--text-primary)]">Arac ve Sikayet Bilgileri</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            <select
+              value={brand}
+              onChange={(e) => { setBrand(e.target.value); setModel(''); }}
+              className="p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-xl text-[var(--text-primary)] outline-none"
+            >
+              <option value="">Marka Secin</option>
+              {Object.keys(carBrands).sort().map((b) => <option key={b} value={b}>{b}</option>)}
+            </select>
+
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              disabled={!brand}
+              className="p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-xl text-[var(--text-primary)] outline-none disabled:opacity-50"
+            >
+              <option value="">Model Secin</option>
+              {(carBrands[brand] || []).sort().map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          <input type="file" multiple accept="image/*" onChange={(e) => setUploadedFiles(Array.from(e.target.files || []))} className="w-full mt-3 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]" />
-          <button type="button" onClick={runAnalysis} disabled={isRunning} className="mt-4 w-full p-3 rounded-xl bg-[var(--accent)] text-white font-black hover:brightness-110 transition-all disabled:opacity-60">
-            {isRunning ? 'Analiz calisiyor...' : 'AI Analizini Calistir'}
+
+          <textarea
+            value={complaintText}
+            onChange={(e) => setComplaintText(e.target.value)}
+            className="w-full mt-3 p-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] min-h-24"
+            placeholder="Musteri sikayeti veya notlar (istege bagli)..."
+          />
+
+          <div className="mt-3 relative">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setUploadedFiles(Array.from(e.target.files || []))}
+              className="absolute inset-0 opacity-0 cursor-pointer z-10"
+            />
+            <div className="p-4 border-2 border-dashed border-[var(--border-soft)] rounded-xl text-center hover:border-[var(--accent)] transition-all bg-[var(--bg-main)]">
+              {uploadedFiles.length > 0 ? (
+                <span className="text-[var(--accent)] font-bold">{uploadedFiles[0].name} secildi</span>
+              ) : (
+                <span className="text-[var(--text-muted)] text-sm font-bold">+ Hasar Fotografini Yukle</span>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={runAnalysis}
+            disabled={isRunning || !brand}
+            className="mt-4 w-full p-4 rounded-xl bg-[var(--accent)] text-white font-black hover:brightness-110 transition-all disabled:opacity-50 shadow-lg"
+          >
+            {isRunning ? 'AI ANALIZ EDIYOR...' : 'AI ANALIZINI BASLAT'}
           </button>
         </section>
 
@@ -124,23 +204,60 @@ export default function AIAnalysis() {
         </section>
       </div>
 
-      <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-        <h2 className="text-xl font-black text-[var(--text-primary)] mb-4">Onerilen Katalog Eslesmeleri</h2>
-        <div className="space-y-3">
-          {allSuggestions.map((item) => {
-            const selected = selectedSuggestions.includes(item.label);
-            return (
-              <button type="button" key={`${item.type}-${item.label}`} onClick={() => toggleSuggestion(item.label)} className={`w-full text-left rounded-xl border p-4 transition-all ${selected ? 'border-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border-soft)] bg-[var(--bg-main)]'}`}>
-                <p className="text-xs uppercase tracking-widest font-black text-[var(--text-muted)]">{item.type}</p>
-                <div className="mt-1 flex justify-between gap-3">
-                  <h3 className="text-base font-bold text-[var(--text-primary)]">{item.label}</h3>
-                  <span className="text-xs font-black text-[var(--accent)]">%{item.confidence}</span>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
+          <h2 className="text-xl font-black text-[var(--text-primary)] mb-4">AI Tespit Sonuclari</h2>
+
+          {aiReport ? (
+            <div className="p-5 bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-2xl">
+              <p className="text-[10px] uppercase tracking-widest font-black text-[var(--accent)] mb-2">AI Usta Raporu</p>
+              <div className="text-[var(--text-primary)] font-bold whitespace-pre-wrap leading-7 italic">
+                "{aiReport}"
+              </div>
+            </div>
+          ) : (
+            <div className="p-10 text-center border-2 border-dashed border-[var(--border-soft)] rounded-2xl text-[var(--text-muted)] font-bold">
+              Henuz analiz yapilmadi
+            </div>
+          )}
+
+          <div className="mt-6 space-y-3">
+            {remoteSuggestions.map((item) => (
+              <div key={`${item.type}-${item.label}`} className="flex items-center justify-between p-3 bg-[var(--bg-main)] rounded-xl border border-[var(--border-soft)]">
+                <div>
+                  <span className="text-[9px] uppercase font-black text-[var(--text-muted)] tracking-tighter">TESPIT</span>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">{item.label}</p>
                 </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                <span className="text-xs font-black text-[var(--accent)]">%{item.confidence}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
+          <h2 className="text-xl font-black text-[var(--text-primary)] mb-4">Maliyet Tahmini</h2>
+          <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-main)] p-6">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-sm text-[var(--text-secondary)] font-bold">Arac Segmenti:</span>
+              <span className="px-3 py-1 bg-[var(--accent)]/10 text-[var(--accent)] rounded-lg text-xs font-black uppercase">{tier.label}</span>
+            </div>
+            <div className="flex justify-between items-center mb-6">
+              <span className="text-sm text-[var(--text-secondary)] font-bold">Fiyat Carpani:</span>
+              <span className="text-lg font-black text-[var(--text-primary)]">x{tier.multiplier}</span>
+            </div>
+
+            <div className="pt-6 border-t border-[var(--border-soft)]">
+              <p className="text-xs text-[var(--text-muted)] font-black uppercase tracking-widest mb-1">Tahmini Servis Tutari</p>
+              <p className="text-5xl font-black text-[var(--accent)] tracking-tighter">
+                {estimatedPrice.toLocaleString('tr-TR')} <span className="text-2xl">TL</span>
+              </p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-4 leading-4">
+                * Bu fiyat yapay zeka tarafindan tespit edilen hasarlar ve parca carpanlari uzerinden tahmin edilmistir. Kesin tutar usta kontrolu sonrasi netlesir.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

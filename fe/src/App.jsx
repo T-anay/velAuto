@@ -14,6 +14,7 @@ import Expenses from './pages/Expenses';
 import Staff from './pages/Staff';
 import AppointmentsAdmin from './pages/AppointmentsAdmin';
 import AIAnalysis from './pages/AIAnalysis';
+import AISettings from './pages/AISettings';
 import AuditLogs from './pages/AuditLogs';
 import Notifications from './pages/Notifications';
 import Invoices from './pages/Invoices';
@@ -60,6 +61,7 @@ function AppContent() {
           <Route path="/personel" element={<Staff />} />
           <Route path="/randevular" element={<AppointmentsAdmin />} />
           <Route path="/ai-analiz" element={<AIAnalysis />} />
+          <Route path="/ai-ayarlari" element={<AISettings />} />
           <Route path="/sistem-kayitlari" element={<AuditLogs />} />
           <Route path="/bildirimler" element={<Notifications />} />
           <Route path="/faturalar" element={<Invoices />} />

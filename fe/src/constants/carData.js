@@ -1,4 +1,4 @@
- export const carBrands = {
+const DEFAULT_CAR_BRANDS = {
     'Renault': ['Clio', 'Megane', 'Symbol', 'Fluence', 'Captur', 'Kadjar', 'Talisman', 'Kangoo', 'Master', 'Twingo'],
     'Volkswagen': ['Golf', 'Polo', 'Passat', 'Jetta', 'Tiguan', 'T-Roc', 'Caddy', 'Transporter', 'Sharan', 'Touran'],
     'Fiat': ['Egea', 'Doblo', 'Linea', 'Tipo', '500', '500L', 'Panda', 'Qubo', 'Ducato', 'Fiorino'],
@@ -24,3 +24,5 @@
     'Anadol': ['Anadol A1', 'Anadol A2', 'Anadol STC-16', 'Anadol SC', 'Anadol SL', 'Anadol SV', 'Anadol ST', 'Anadol A3', 'Anadol A4', 'Anadol A5'],
     'Diğer': []
 };
+
+export const carBrands = JSON.parse(localStorage.getItem('AI_CAR_DATA')) || DEFAULT_CAR_BRANDS;

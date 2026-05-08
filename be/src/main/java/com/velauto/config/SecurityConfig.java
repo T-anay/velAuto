@@ -61,6 +61,7 @@ public class SecurityConfig {
               auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll();
               auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll();
               auth.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated();
+              auth.requestMatchers(HttpMethod.POST, "/api/v1/appointments/public-book").permitAll();
               auth.requestMatchers(HttpMethod.POST, "/api/public/appointments").permitAll();
 
               // 3. ÖNCELİK: Diğer kuralları YAML'dan okumaya devam et

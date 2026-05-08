@@ -7,5 +7,7 @@ public interface NotificationService {
   void sendStaffWelcomeEmail(String email, String rawPassword);
 
   void sendAppointmentConfirmation(String phone, String appointmentDetails);
+  
+  void sendSystemNotification(String title, String message);
 }
 

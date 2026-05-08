@@ -28,8 +28,8 @@ export default function Appointments() {
 
     // State'e brand ve model eklendi
     const [formValues, setFormValues] = useState({
-        plateCountry: 'TR', plate: '', 
-        customer: '', phone: '', service: '', 
+        plateCountry: 'TR', plate: '',
+        customer: '', phone: '', service: '',
         brand: '', model: '', // YENİ
         time: formatDateTimeLocal()
     });
@@ -112,11 +112,11 @@ export default function Appointments() {
             });
 
             // Formu sıfırla
-            setFormValues({ 
-                plateCountry: 'TR', plate: '', 
-                customer: '', phone: '', service: '', 
+            setFormValues({
+                plateCountry: 'TR', plate: '',
+                customer: '', phone: '', service: '',
                 brand: '', model: '',
-                time: formatDateTimeLocal() 
+                time: formatDateTimeLocal()
             });
             setError('');
             setErrorFields([]);
@@ -212,7 +212,7 @@ export default function Appointments() {
                                         ))}
                                     </select>
                                     {errorFields.includes('brand') && <p className="text-[11px] font-bold text-red-400 ml-1">Seçim yapmadınız.</p>}
-                                     
+
                                 </div>
 
                                 <div className="space-y-1">
@@ -232,7 +232,7 @@ export default function Appointments() {
                                         ))}
                                     </select>
                                     {errorFields.includes('model') && <p className="text-[11px] font-bold text-red-400 ml-1">Seçim yapmadınız.</p>}
-                                     
+
                                 </div>
                             </div>
                         </div>
@@ -269,29 +269,29 @@ export default function Appointments() {
                         .map(app => ({ ...app, _status: getAppointmentStatus(app).status }))
                         .filter(app => app._status !== 'CONVERTED')
                         .map((app) => (
-                    <div key={app.id} className={`group p-5 rounded-2xl bg-[var(--bg-card)] border-l-8 transition-all hover:scale-[1.02] shadow-xl ${app.type === 'green' ? 'border-[var(--success)]' : 'border-[var(--danger)]'}`}>
-                        <div className="flex justify-between items-start mb-3">
-                            <div>
-                                <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest block mb-1 opacity-70">{formatDateTime(app.time)}</span>
-                                <h3 className="text-2xl font-black text-[var(--text-primary)] tracking-tighter">{app.plate}</h3>
-                            </div>
-                            <span className={`px-2 py-1 rounded text-[9px] font-black border uppercase tracking-tighter ${app.type === 'green' ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]' : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]'}`}>{app.status}</span>
-                        </div>
-                        <div className="space-y-1 mb-4">
-                            <p className="text-gray-300 font-semibold text-sm">{app.customer}</p>
-                            <p className="text-gray-500 text-xs">{app.service}</p>
-                        </div>
+                            <div key={app.id} className={`group p-5 rounded-2xl bg-[var(--bg-card)] border-l-8 transition-all hover:scale-[1.02] shadow-xl ${app.type === 'green' ? 'border-[var(--success)]' : 'border-[var(--danger)]'}`}>
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest block mb-1 opacity-70">{formatDateTime(app.time)}</span>
+                                        <h3 className="text-2xl font-black text-[var(--text-primary)] tracking-tighter">{app.plate}</h3>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded text-[9px] font-black border uppercase tracking-tighter ${app.type === 'green' ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]' : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]'}`}>{app.status}</span>
+                                </div>
+                                <div className="space-y-1 mb-4">
+                                    <p className="text-gray-300 font-semibold text-sm">{app.customer}</p>
+                                    <p className="text-gray-500 text-xs">{app.service}</p>
+                                </div>
 
-                        <div className="flex gap-2 mt-3 pt-3 border-t border-[var(--border-strong)]/30">
-                            {app.status === 'ONAY BEKLİYOR' ? (
-                                <button onClick={() => approveAppointment(app.id)} className="flex-1 py-2 bg-[var(--accent)] text-white font-black rounded-lg hover:brightness-110 transition-all text-xs uppercase tracking-widest shadow-md">ONAYLA</button>
-                            ) : (
-                                <button onClick={() => handleOpenJobOrder(app)} className="flex-1 py-2 bg-[var(--border-strong)] text-[var(--text-primary)] font-black rounded-lg hover:bg-[var(--accent)] hover:text-white transition-all text-xs uppercase tracking-widest shadow-md">IS EMRI AC</button>
-                            )}
-                            <button onClick={() => setDeleteModal({ isOpen: true, id: app.id, plate: app.plate })} className="px-4 py-2 bg-transparent border border-[var(--danger)]/50 text-[var(--danger)] font-black rounded-lg hover:bg-[var(--danger)] hover:text-[var(--text-primary)] transition-all text-xs uppercase tracking-widest">SIL</button>
-                        </div>
-                    </div>
-                )) : (
+                                <div className="flex gap-2 mt-3 pt-3 border-t border-[var(--border-strong)]/30">
+                                    {app.status === 'ONAY BEKLİYOR' ? (
+                                        <button onClick={() => approveAppointment(app.id)} className="flex-1 py-2 bg-[var(--accent)] text-white font-black rounded-lg hover:brightness-110 transition-all text-xs uppercase tracking-widest shadow-md">ONAYLA</button>
+                                    ) : (
+                                        <button onClick={() => handleOpenJobOrder(app)} className="flex-1 py-2 bg-[var(--border-strong)] text-[var(--text-primary)] font-black rounded-lg hover:bg-[var(--accent)] hover:text-white transition-all text-xs uppercase tracking-widest shadow-md">IS EMRI AC</button>
+                                    )}
+                                    <button onClick={() => setDeleteModal({ isOpen: true, id: app.id, plate: app.plate })} className="px-4 py-2 bg-transparent border border-[var(--danger)]/50 text-[var(--danger)] font-black rounded-lg hover:bg-[var(--danger)] hover:text-[var(--text-primary)] transition-all text-xs uppercase tracking-widest">SIL</button>
+                                </div>
+                            </div>
+                        )) : (
                     <div className="col-span-full text-center py-20 bg-[var(--bg-card)]/30 rounded-3xl border border-dashed border-[var(--border-strong)]">
                         <p className="text-gray-500 font-medium">Henuz kayitli bir randevu bulunmuyor.</p>
                     </div>

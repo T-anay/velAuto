@@ -123,4 +123,3 @@ public class Messages {
   // General
   public static final String INVALID_REQUEST = "İstek parametreleri geçersiz.";
 }
-

@@ -305,8 +305,8 @@ export const ServiceProvider = ({ children }) => {
   const ensureCustomer = useCallback(async ({ fullName, phone, plate, email, address, notes }) => {
     const normalizedPlate = normalizePlate(plate);
     const normalizedPhone = normalizePhoneForBackend(phone);
-    const existingCustomer = customers.find((customer) => 
-      (normalizedPlate && normalizePlate(customer.plate) === normalizedPlate) || 
+    const existingCustomer = customers.find((customer) =>
+      (normalizedPlate && normalizePlate(customer.plate) === normalizedPlate) ||
       (normalizeText(phone) && normalizeText(customer.phone) === normalizeText(phone))
     );
     if (existingCustomer) {
@@ -578,6 +578,23 @@ export const ServiceProvider = ({ children }) => {
     }
     setAppointments((prev) => prev.filter((appointment) => String(appointment.id) !== String(id)));
     return { success: true };
+  }, []);
+
+  const reviseAppointment = useCallback(async (id, newDate, notes) => {
+    try {
+      const updated = await api.appointments.revise(id, { newDate, notes });
+      const normalized = normalizeAppointment(updated);
+
+      setAppointments((prev) => prev.map((app) => String(app.id) === String(id)
+        ? { ...app, ...normalized, statusLabel: 'Revize Edildi', color: 'orange', status: 'REVISED' }
+        : app));
+
+      pushToast({ type: 'success', title: 'Randevu revize edildi', message: 'Müşteriye bilgilendirme maili gönderildi.' });
+      return { success: true };
+    } catch (err) {
+      pushToast({ type: 'danger', title: 'Hata', message: err.message || 'Revize işlemi başarısız.' });
+      return { success: false };
+    }
   }, []);
 
   const setAppointmentOverride = useCallback((id, status) => {
@@ -878,6 +895,7 @@ export const ServiceProvider = ({ children }) => {
     addAppointment,
     approveAppointment,
     deleteAppointment,
+    reviseAppointment,
     setAppointmentOverride,
     getAppointmentStatus,
     processPayment,

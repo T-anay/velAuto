@@ -201,24 +201,24 @@ export default function VehicleEntry() {
               <span className="bg-[var(--accent)]/10 p-2 rounded text-sm">3.</span> Gorsel Kayit & AI
             </h3>
 
-            <div className="flex-1 border-2 border-dashed border-[var(--border-strong)] rounded-2xl flex flex-col items-center justify-center text-center p-10 group hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all cursor-pointer relative">
+            <div className="flex-1 border-2 border-dashed border-[var(--border-strong)] rounded-2xl flex flex-col items-center justify-center text-center p-10 group hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all cursor-pointer relative mb-4">
               <input
                 type="file"
                 multiple
                 accept="image/*"
                 onChange={(event) => setFormData((prev) => ({ ...prev, photos: Array.from(event.target.files || []) }))}
-                className="absolute inset-0 opacity-0 cursor-pointer"
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
               />
               <div className="text-5xl mb-4">+</div>
               <h2 className="text-xl font-bold mb-2 text-[var(--text-primary)] font-sans">Fotograf Ekleyin</h2>
               <p className="text-gray-500 text-sm max-w-60 mx-auto font-sans">Hasar tespiti veya ruhsat okuma icin araci farkli acilardan cekin.</p>
+            </div>
 
               {formData.photos.length > 0 && (
                 <div className="mt-6 p-3 bg-[var(--accent)]/10 rounded-lg border border-[var(--accent)]">
                   <p className="text-[var(--accent)] font-black text-sm uppercase tracking-widest">{formData.photos.length} dosya secildi</p>
                 </div>
               )}
-            </div>
 
             <button
               onClick={handleSubmit}

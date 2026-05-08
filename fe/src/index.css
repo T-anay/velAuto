@@ -1,18 +1,17 @@
 @import "tailwindcss";
-@config "../tailwind.config.js";
-
 @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&display=swap');
+@config "../tailwind.config.js";
 
 :root,
 [data-theme='light'] {
-  --color-background: 244 246 248;
+  --color-background: 248 250 252;
   --color-surface: 255 255 255;
 
-  --color-brand-yellow: 0 139 147;
+  --color-brand-yellow: 0 107 115; /* Professional Teal/Blue for light mode */
   --color-accent: 0 107 115;
-  --color-danger: 220 53 69;
+  --color-danger: 220 38 38;
 
-  --color-text-main: 26 32 44;
+  --color-text-main: 15 23 42;
   --color-border: 226 232 240;
 
   /* DEĞİŞKEN ATAMALARI */
@@ -20,19 +19,19 @@
   --bg-sidebar: rgb(var(--color-surface));
   --bg-card: rgb(var(--color-surface));
 
-  --bg-hover: rgba(0 139 147 / 0.08);
+  --bg-hover: rgba(0 107 115 / 0.08);
 
   --border-soft: rgb(var(--color-border));
-  --border-strong: rgba(0 139 147 / 0.22);
+  --border-strong: rgba(0 107 115 / 0.3);
 
   --text-primary: rgb(var(--color-text-main));
-  --text-secondary: rgb(74 85 104);
-  --text-muted: rgb(74 85 104);
+  --text-secondary: rgb(71 85 105);
+  --text-muted: rgb(100 116 139);
 
-  --accent: rgb(var(--color-brand-yellow));
-  --accent-hover: rgb(0 107 115);
+  --accent: rgb(0 107 115); 
+  --accent-hover: rgb(0 90 98);
   --danger: rgb(var(--color-danger));
-  --success: rgb(16 185 129);
+  --success: rgb(22 163 74);
 
   --toast-text: rgb(17 24 39);
   --toast-muted: rgb(55 65 81);
@@ -55,27 +54,27 @@
 
 .dark,
 [data-theme='dark'] {
-  --color-background: 27 29 33;
-  --color-surface: 36 39 44;
-  --color-brand-yellow: 0 173 181;
-  --color-accent: 0 173 181;
-  --color-danger: 236 77 55;
-  --color-text-main: 229 229 229;
-  --color-border: 55 65 81;
+  --color-background: 14 16 19;
+  --color-surface: 40 44 51;
+  --color-brand-yellow: 255 184 0; /* Electric Amber */
+  --color-accent: 0 240 255; /* Neon Cyan */
+  --color-danger: 255 77 77;
+  --color-text-main: 255 255 255;
+  --color-border: 65 70 80;
 
   --bg-main: rgb(var(--color-background));
-  --bg-sidebar: rgb(27 29 33);
+  --bg-sidebar: rgb(var(--color-background));
   --bg-card: rgb(var(--color-surface));
-  --bg-hover: rgb(48 52 58);
-  --border-soft: rgb(var(--color-border));
-  --border-strong: rgb(var(--color-accent));
+  --bg-hover: rgb(52 56 65);
+  --border-soft: rgba(255 255 255 / 0.12);
+  --border-strong: rgba(var(--color-brand-yellow) / 0.4);
   --text-primary: rgb(var(--color-text-main));
-  --text-secondary: rgb(156 163 175);
-  --text-muted: rgb(107 114 128);
+  --text-secondary: rgb(160 165 175);
+  --text-muted: rgb(115 120 130);
   --accent: rgb(var(--color-brand-yellow));
-  --accent-hover: rgb(0 211 220);
+  --accent-hover: rgb(255 200 0);
   --danger: rgb(var(--color-danger));
-  --success: rgb(76 175 80);
+  --success: rgb(0 255 145);
 
   --toast-text: rgb(243 244 246);
   --toast-muted: rgb(209 213 219);

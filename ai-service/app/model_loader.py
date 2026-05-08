@@ -16,10 +16,17 @@ class YoloDamageDetector:
     def __init__(self, model_path: str, conf_threshold: float) -> None:
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.conf_threshold = conf_threshold
-        self.model = YOLO(model_path)
-        self.model.to(self.device)
+        try:
+            self.model = YOLO(model_path)
+            self.model.to(self.device)
+            self.is_ready = True
+        except Exception as e:
+            print(f"UYARI: YOLO modeli yuklenemedi ({model_path}): {e}")
+            self.is_ready = False
 
     def detect(self, image_bytes: bytes) -> List[DamageDetection]:
+        if not self.is_ready:
+            return []
         image = Image.open(BytesIO(image_bytes)).convert("RGB")
         image_np = np.array(image)
 

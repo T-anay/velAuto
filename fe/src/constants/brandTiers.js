@@ -21,6 +21,18 @@ export const brandTiers = {
   },
 };
 
+const savedTiers = JSON.parse(localStorage.getItem('AI_BRAND_TIERS'));
+if (savedTiers) {
+  Object.keys(brandTiers).forEach((key) => {
+    if (savedTiers[key]) {
+      brandTiers[key].multiplier = savedTiers[key].multiplier;
+      if (savedTiers[key].brands) {
+        brandTiers[key].brands = savedTiers[key].brands;
+      }
+    }
+  });
+}
+
 export const getBrandTier = (brand = '') => {
   const normalized = String(brand).toLowerCase();
   return Object.values(brandTiers).find((tier) => (
