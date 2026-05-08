@@ -14,10 +14,12 @@ const initialForm = {
   firstName: '',
   lastName: '',
   phone: '',
+  email: '',
   plateCountry: 'TR',
   plate: '',
   brand: '',
   model: '',
+  appointmentDate: '',
   complaint: '',
   selectedServices: [],
 };
@@ -65,9 +67,11 @@ export default function PublicAppointment() {
         firstName: form.firstName,
         lastName: form.lastName,
         phone: form.phone,
+        email: form.email,
         plate: form.plate,
         brand: form.brand,
         model: form.model,
+        appointmentDate: form.appointmentDate,
         complaint: form.selectedServices.join(', ') + (form.complaint ? ` | Not: ${form.complaint}` : ''),
       };
 
@@ -159,9 +163,13 @@ export default function PublicAppointment() {
                     <label className="text-[10px] font-black text-[var(--text-muted)] uppercase ml-1 tracking-widest">Soyadınız</label>
                     <input required value={form.lastName} onChange={(e) => update('lastName', e.target.value)} className="w-full p-5 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-3xl text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all font-bold placeholder:text-[var(--text-muted)]" placeholder="Örn: Kaya" />
                   </div>
-                  <div className="md:col-span-2 space-y-3">
+                  <div className="md:col-span-1 space-y-3">
                     <label className="text-[10px] font-black text-[var(--text-muted)] uppercase ml-1 tracking-widest">Telefon</label>
                     <input required value={form.phone} onChange={(e) => update('phone', e.target.value)} className="w-full p-5 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-3xl text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all font-bold placeholder:text-[var(--text-muted)]" placeholder="05XX XXX XX XX" />
+                  </div>
+                  <div className="md:col-span-1 space-y-3">
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase ml-1 tracking-widest">E-posta</label>
+                    <input required type="email" value={form.email} onChange={(e) => update('email', e.target.value)} className="w-full p-5 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-3xl text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all font-bold placeholder:text-[var(--text-muted)]" placeholder="ornek@mail.com" />
                   </div>
                 </div>
               </div>
@@ -206,6 +214,17 @@ export default function PublicAppointment() {
                         {models.map(m => <option key={m} value={m} className="bg-[var(--bg-card)] text-[var(--text-primary)]">{m}</option>)}
                       </select>
                     </div>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase ml-1 tracking-widest">Tercih Edilen Randevu Tarihi</label>
+                    <input
+                      required
+                      type="datetime-local"
+                      value={form.appointmentDate}
+                      onChange={(e) => update('appointmentDate', e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                      className="w-full p-5 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-3xl text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all font-bold"
+                    />
                   </div>
                 </div>
               </div>
@@ -265,6 +284,16 @@ export default function PublicAppointment() {
                     <p className="text-[9px] uppercase font-black text-[var(--text-muted)] tracking-[0.2em] mb-1">Araç / Plaka</p>
                     <p className="text-base font-black text-[var(--text-primary)]">{form.brand} {form.model} <span className="text-xs text-[var(--accent)] ml-2">{form.plate}</span></p>
                   </div>
+                  <div className="p-5 bg-[var(--bg-main)] rounded-[24px] border border-[var(--border-soft)]">
+                    <p className="text-[9px] uppercase font-black text-[var(--text-muted)] tracking-[0.2em] mb-1">E-posta</p>
+                    <p className="text-base font-black text-[var(--text-primary)] truncate">{form.email}</p>
+                  </div>
+                  <div className="p-5 bg-[var(--bg-main)] rounded-[24px] border border-[var(--border-soft)]">
+                    <p className="text-[9px] uppercase font-black text-[var(--text-muted)] tracking-[0.2em] mb-1">Randevu Tarihi</p>
+                    <p className="text-base font-black text-[var(--text-primary)]">
+                      {form.appointmentDate ? new Date(form.appointmentDate).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest italic">
                   <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-ping" />
@@ -291,8 +320,8 @@ export default function PublicAppointment() {
                 type="button"
                 onClick={nextStep}
                 disabled={
-                  (step === 1 && (!form.firstName || !form.lastName || !form.phone)) ||
-                  (step === 2 && (!form.plate || !form.brand || !form.model)) ||
+                  (step === 1 && (!form.firstName || !form.lastName || !form.phone || !form.email)) ||
+                  (step === 2 && (!form.plate || !form.brand || !form.model || !form.appointmentDate)) ||
                   (step === 3 && form.selectedServices.length === 0)
                 }
                 className="px-12 py-4 bg-[var(--accent)] text-black font-black rounded-2xl shadow-[0_20px_40px_-10px_rgba(255,184,0,0.3)] hover:scale-[1.04] active:scale-[0.96] transition-all uppercase tracking-[0.25em] disabled:opacity-10 text-xs"

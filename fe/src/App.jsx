@@ -13,6 +13,7 @@ import Profile from './pages/Profile';
 import Expenses from './pages/Expenses';
 import Staff from './pages/Staff';
 import AppointmentsAdmin from './pages/AppointmentsAdmin';
+import IncomingAppointments from './pages/IncomingAppointments';
 import AIAnalysis from './pages/AIAnalysis';
 import AISettings from './pages/AISettings';
 import AuditLogs from './pages/AuditLogs';
@@ -54,6 +55,7 @@ function AppContent() {
           <Route path="/active-jobs" element={<ActiveJobs />} />
           <Route path="/job-detail/:id" element={<JobOrderDetail />} />
           <Route path="/appointments" element={<Appointments />} />
+          <Route path="/incoming-appointments" element={<IncomingAppointments />} />
           <Route path="/customers" element={<Customers />} />
           <Route path="/cashier" element={<Cashier />} />
           <Route path="/profil" element={<Profile />} />

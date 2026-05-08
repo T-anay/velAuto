@@ -168,6 +168,7 @@ export const normalizeAppointment = (appointment, customerLookup = new Map(), ve
     type: approved ? 'green' : 'red',
     brand: normalizeText(appointment?.brand, appointment?.make, vehicle?.brand),
     model: normalizeText(appointment?.model, appointment?.modelName, vehicle?.model),
+    email: normalizeText(appointment?.email, customer?.email),
   };
 };
 

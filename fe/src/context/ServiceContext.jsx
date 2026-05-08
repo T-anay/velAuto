@@ -158,6 +158,8 @@ export const ServiceProvider = ({ children }) => {
   const [isBootstrapping, setIsBootstrapping] = useState(Boolean(savedTokens.accessToken || savedTokens.refreshToken));
   const [error, setError] = useState('');
   const [isLoadingJob, setIsLoadingJob] = useState(false);
+  const [staff, setStaff] = useState([]);
+
 
   useEffect(() => saveJson(CACHE_KEYS.user, user), [user]);
   useEffect(() => saveJson(CACHE_KEYS.jobs, jobs), [jobs]);
@@ -167,6 +169,18 @@ export const ServiceProvider = ({ children }) => {
   useEffect(() => saveJson(CACHE_KEYS.payments, payments), [payments]);
   useEffect(() => saveJson(CACHE_KEYS.serviceCatalog, serviceCatalog), [serviceCatalog]);
   useEffect(() => saveJson(CACHE_KEYS.appointmentOverrides, appointmentOverrides), [appointmentOverrides]);
+  useEffect(() => {
+    const fetchStaff = async () => {
+      try {
+        const response = await api.staff.list();
+        setStaff(extractCollection(response));
+      } catch (err) {
+        console.error('Staff fetching error:', err);
+      }
+    };
+    fetchStaff();
+  }, []);
+
 
   // Normalize any cached jobs/appointments on mount so older caches still have status metadata
   useEffect(() => {
@@ -782,6 +796,59 @@ export const ServiceProvider = ({ children }) => {
     return normalized;
   }, [customers, jobs]);
 
+  const updateServiceItemStatus = useCallback(async (jobId, itemId, status) => {
+    const job = jobs.find((entry) => String(entry.id) === String(jobId));
+    if (!job) return { success: false };
+
+    if (isBackendCompatibleIntegerId(itemId)) {
+      await api.serviceFormItems.updateStatus(itemId, status).catch(() => null);
+    }
+
+    const nextItems = (job.items || []).map((item) =>
+      String(item.id) === String(itemId) ? { ...item, status } : item
+    );
+    const allCompleted = nextItems.every((item) => item.status === 'TAMAMLANDI');
+
+    setJobs((prev) =>
+      prev.map((entry) =>
+        String(entry.id) === String(jobId) ? { ...entry, items: nextItems } : entry
+      )
+    );
+
+    return { success: true, allCompleted };
+  }, [jobs]);
+
+  const completeServiceForm = useCallback(async (jobId) => {
+    const job = jobs.find((entry) => String(entry.id) === String(jobId));
+    if (!job) return { success: false };
+
+    if (isBackendCompatibleIntegerId(job.serviceFormId)) {
+      await api.serviceForms.complete(job.serviceFormId).catch(() => null);
+    }
+
+    await setJobStatus(jobId, 'COMPLETED');
+    return { success: true };
+  }, [jobs, setJobStatus]);
+
+  const assignServiceFormStaff = useCallback(async (jobId, staffId) => {
+    const job = jobs.find((entry) => String(entry.id) === String(jobId));
+    if (!job) return { success: false };
+
+    if (isBackendCompatibleIntegerId(job.serviceFormId)) {
+      await api.serviceForms.assignStaff(job.serviceFormId, { staffId }).catch(() => null);
+    }
+
+    setJobs((prev) =>
+      prev.map((entry) =>
+        String(entry.id) === String(jobId) ? { ...entry, assignedStaffId: staffId } : entry
+      )
+    );
+
+    pushToast({ type: 'success', title: 'Personel atandı', message: 'İş emrine personel ataması yapıldı.' });
+    return { success: true };
+  }, [jobs]);
+
+
   const processPayment = useCallback(async (id, method = 'NAKİT', amountToPay = null, options = {}) => {
     const { suppressToast = false } = options;
     const payment = payments.find((entry) => String(entry.id) === String(id));
@@ -902,6 +969,10 @@ export const ServiceProvider = ({ children }) => {
     updateUserProfile,
     changeUserPassword,
     isValidTurkishPlate,
+    updateServiceItemStatus,
+    completeServiceForm,
+    assignServiceFormStaff,
+    staff,
   }), [
     addAppointment,
     addCustomer,
@@ -936,7 +1007,12 @@ export const ServiceProvider = ({ children }) => {
     vehicles,
     setAppointmentOverride,
     getAppointmentStatus,
+    updateServiceItemStatus,
+    completeServiceForm,
+    assignServiceFormStaff,
+    staff,
   ]);
+
 
   return (
     <ServiceContext.Provider value={value}>

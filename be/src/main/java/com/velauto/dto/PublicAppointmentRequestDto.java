@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -19,6 +20,10 @@ public class PublicAppointmentRequestDto {
   @Pattern(regexp = "^[\\d\\s+()\\-]*\\d[\\d\\s+()\\-]*$", message = "Telefon numarasi gecersiz format")
   private String phone;
 
+  @NotBlank(message = "E-posta bos birakilamaz")
+  @jakarta.validation.constraints.Email(message = "E-posta gecersiz format")
+  private String email;
+
   @NotBlank(message = "Ad bos birakilamaz")
   @Size(min = 2, max = 100, message = "Ad 2-100 karakter arasinda olmalidir")
   @Pattern(regexp = "^[a-zA-Zçğıöşü'\\s-]+$", message = "Ad gecersiz karakter iceriyor")
@@ -29,8 +34,8 @@ public class PublicAppointmentRequestDto {
   @Pattern(regexp = "^[a-zA-Zçğıöşü'\\s-]+$", message = "Soyad gecersiz karakter iceriyor")
   private String lastName;
 
-  @NotBlank(message = "Arac plasasi bos birakilamaz")
-  @Pattern(regexp = "^[0-9A-Za-z]{6,8}$", message = "Plaka gecersiz format")
+  @NotBlank(message = "Arac plakasi bos birakilamaz")
+  @Pattern(regexp = "^[0-9A-Za-z\\s-]{5,11}$", message = "Plaka gecersiz format")
   private String plate;
 
   @NotBlank(message = "Arac markasi bos birakilamaz")
@@ -46,6 +51,9 @@ public class PublicAppointmentRequestDto {
   @NotBlank(message = "Sikayet/Ariza aciklamasi bos birakilamaz")
   @Size(min = 10, max = 1000, message = "Sikayet 10-1000 karakter arasinda olmalidir")
   private String complaint;
+
+  @jakarta.validation.constraints.NotNull(message = "Randevu tarihi bos birakilamaz")
+  private LocalDateTime appointmentDate;
 
   private MultipartFile damageImage;
 }

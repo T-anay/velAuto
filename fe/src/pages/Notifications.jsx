@@ -14,7 +14,8 @@ const loadReadState = () => {
 };
 
 export default function Notifications() {
-  const { jobs, payments } = useService();
+  const { jobs, payments, appointments } = useService();
+
   const [readState, setReadState] = useState(loadReadState);
   const [filter, setFilter] = useState('ALL');
   const [baseTime] = useState(() => Date.now());
@@ -49,7 +50,17 @@ export default function Notifications() {
         detail: `${payment.plate} için ${Number(payment.amount || 0).toLocaleString('tr-TR')} TL tahsilat bekleniyor.`,
       }));
 
-    return [...lowStockSeeds, ...completedJobs, ...paymentUpdates].map((item, index) => ({
+    const appointmentRequests = (appointments || [])
+      .filter(app => app.status === 'ONAY BEKLİYOR')
+      .map((app) => ({
+        id: `app-${app.id}`,
+        type: 'APPOINTMENT',
+        title: 'Yeni Randevu Talebi',
+        detail: `${app.plate} plakalı araç için ${app.customer} tarafından randevu talep edildi.`,
+      }));
+
+    return [...lowStockSeeds, ...completedJobs, ...paymentUpdates, ...appointmentRequests].map((item, index) => ({
+
       ...item,
       createdAt: new Date(baseTime - index * 1000 * 60 * 20).toISOString(),
       read: Boolean(readState[item.id]),
@@ -100,17 +111,18 @@ export default function Notifications() {
       <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div className="flex flex-wrap gap-2">
-            {['ALL', 'STOCK', 'JOB', 'PAYMENT'].map((value) => (
+            {['ALL', 'STOCK', 'JOB', 'PAYMENT', 'APPOINTMENT'].map((value) => (
               <button
                 type="button"
                 key={value}
                 onClick={() => setFilter(value)}
                 className={`px-3 py-2 rounded-lg text-xs font-black uppercase tracking-widest border ${filter === value ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border-soft)] text-[var(--text-secondary)] bg-[var(--bg-main)]'}`}
               >
-                {value === 'ALL' ? 'Tümü' : value}
+                {value === 'ALL' ? 'Tümü' : value === 'APPOINTMENT' ? 'Randevu' : value}
               </button>
             ))}
           </div>
+
           <button type="button" onClick={markAllRead} className="px-4 py-2 rounded-lg bg-[var(--accent)] text-white text-xs font-black uppercase tracking-widest">Tümünü Okundu İşaretle</button>
         </div>
 

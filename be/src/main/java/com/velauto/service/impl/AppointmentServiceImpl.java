@@ -302,12 +302,12 @@ public class AppointmentServiceImpl implements AppointmentService {
       customer = customerRepository.findByUser(existingUserOptional.get())
           .orElseThrow(() -> new BusinessException("Müşteri profili bulunamadı"));
     } else {
-      String uniqueEmail = generateUniqueEmail();
+      // Use provided email instead of generating a temporary one
       com.velauto.dto.CustomerCreateDto customerCreateDto = com.velauto.dto.CustomerCreateDto.builder()
           .firstName(sanitizedFirstName)
           .lastName(sanitizedLastName)
           .phone(normalizedPhone)
-          .email(uniqueEmail)
+          .email(request.getEmail())
           .address("")
           .customerType("INDIVIDUAL")
           .build();
@@ -332,10 +332,15 @@ public class AppointmentServiceImpl implements AppointmentService {
       vehicle = vehicleRepository.save(vehicle);
     }
 
+    LocalDateTime appointmentDate = request.getAppointmentDate();
+    if (appointmentDate.isBefore(LocalDateTime.now().minusMinutes(5))) {
+      throw new BusinessException("Geçmiş bir tarihe randevu alınamaz");
+    }
+
     Appointment appointment = Appointment.builder()
         .customerId(customer.getId())
         .vehicleId(vehicle.getId())
-        .appointmentDate(LocalDateTime.now().plusDays(1))
+        .appointmentDate(appointmentDate)
         .status(com.velauto.entity.enums.AppointmentStatus.PENDING)
         .notes(XssUtils.sanitize(request.getComplaint()))
         .createdAt(LocalDateTime.now())

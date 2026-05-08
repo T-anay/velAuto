@@ -8,14 +8,17 @@ const menuItems = [
   { path: '/vehicle-entry', label: ' Yeni Araç Kabul' },
   { path: '/active-jobs', label: ' Aktif İşler' },
   { path: '/appointments', label: ' Takvim' },
+  { path: '/incoming-appointments', label: ' Randevu İstekleri' },
   { path: '/customers', label: ' Müşteriler' },
+
   { path: '/bildirimler', label: ' Bildirimler' },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, jobs = [], payments = [] } = useService();
+  const { user, logout, jobs = [], payments = [], appointments = [] } = useService();
+
   const { isDark, toggleTheme } = useTheme();
 
   const [readStateVersion, setReadStateVersion] = useState(0);
@@ -48,11 +51,29 @@ export default function Sidebar() {
         if (!readState[`payment-${payment.id}`]) count++;
       });
 
+      const pendingApps = appointments.filter(app => app.status === 'ONAY BEKLİYOR');
+      pendingApps.forEach(app => {
+        if (!readState[`app-${app.id}`]) count++;
+      });
+
       return count;
     } catch {
       return 0;
     }
-  }, [jobs, payments, readStateVersion]);
+  }, [jobs, payments, appointments, readStateVersion]);
+
+  const appointmentBadge = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('velauto_notifications_state_v1');
+      const readState = raw ? JSON.parse(raw) : {};
+      const pendingApps = appointments.filter(app => app.status === 'ONAY BEKLİYOR');
+      const unreadPendingCount = pendingApps.filter(app => !readState[`app-${app.id}`]).length;
+      return unreadPendingCount > 0 ? String(unreadPendingCount) : null;
+    } catch {
+      return null;
+    }
+  }, [appointments, readStateVersion]);
+
 
   const displayBadge = unreadCount > 99 ? '99+' : unreadCount > 0 ? String(unreadCount) : null;
 
@@ -102,8 +123,12 @@ export default function Sidebar() {
 
       <nav className="flex-1 py-5">
         {menuItems.map((item) => {
-          const badgeText = item.path === '/bildirimler' ? displayBadge : item.badge;
+          let badgeText = item.badge;
+          if (item.path === '/bildirimler') badgeText = displayBadge;
+          if (item.path === '/incoming-appointments') badgeText = appointmentBadge;
+          
           return (
+
             <div
               key={item.path}
               onClick={() => navigate(item.path)}
