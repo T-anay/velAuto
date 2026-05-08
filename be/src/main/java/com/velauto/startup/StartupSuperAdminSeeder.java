@@ -1,7 +1,9 @@
 package com.velauto.startup;
 
+import com.velauto.entity.Staff;
 import com.velauto.entity.User;
 import com.velauto.entity.enums.Role;
+import com.velauto.repository.StaffRepository;
 import com.velauto.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,43 +20,41 @@ import java.time.LocalDateTime;
 public class StartupSuperAdminSeeder implements CommandLineRunner {
 
   private final UserRepository userRepository;
+  private final StaffRepository staffRepository;
   private final PasswordEncoder passwordEncoder;
 
   private static final String SUPER_ADMIN_EMAIL = "superadmin@velauto.com";
   private static final String SUPER_ADMIN_PASSWORD = "Admin123";
+  private static final String SUPER_ADMIN_PHONE = "+900000000000";
 
   @Override
   @Transactional
   public void run(String... args) {
-
-    // 1. SUPER ADMIN'İ OLUŞTUR
-    if (userRepository.existsByEmail(SUPER_ADMIN_EMAIL)) {
-      log.info("Super admin mevcut: {}", SUPER_ADMIN_EMAIL);
+    if (staffRepository.existsActiveStaffByUserRole(Role.SUPER_ADMIN)) {
+      log.info("Super admin staff kaydi zaten mevcut");
       return;
     }
 
-    // Check if any SUPER_ADMIN role exists in User table
-    boolean superAdminExists = userRepository.findAll().stream()
-        .anyMatch(u -> u.getRole() == Role.SUPER_ADMIN && u.getDeletedAt() == null);
-
-    if (superAdminExists) {
-      log.info("Super admin zaten sistem'de mevcut");
-      return;
-    }
-
-    User superAdmin = new User();
+    User superAdmin = userRepository.findByEmail(SUPER_ADMIN_EMAIL).orElseGet(User::new);
     superAdmin.setEmail(SUPER_ADMIN_EMAIL);
     superAdmin.setPasswordHash(passwordEncoder.encode(SUPER_ADMIN_PASSWORD));
     superAdmin.setRole(Role.SUPER_ADMIN);
     superAdmin.setActive(true);
     superAdmin.setCreatedBy(null);
-
+    superAdmin.setPhone(SUPER_ADMIN_PHONE);
     superAdmin.setDeletedAt(null);
-    superAdmin.setCreatedAt(LocalDateTime.now());
-    superAdmin.setPhone("+900000000000");
+    if (superAdmin.getCreatedAt() == null) {
+      superAdmin.setCreatedAt(LocalDateTime.now());
+    }
 
-    userRepository.saveAndFlush(superAdmin);
+    User savedUser = userRepository.saveAndFlush(superAdmin);
 
-    log.info("Super admin oluşturuldu: {}", SUPER_ADMIN_EMAIL);
+    Staff staff = new Staff();
+    staff.setUser(savedUser);
+    staff.setFullName("VelAuto Super Admin");
+    staff.setPhone(SUPER_ADMIN_PHONE);
+    staffRepository.save(staff);
+
+    log.info("Super admin staff olarak olusturuldu: {}", SUPER_ADMIN_EMAIL);
   }
 }

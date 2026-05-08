@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useService } from '../context/ServiceContext';
-import PlateInput from '../components/PlateInput';
 
 export default function Musteriler() {
-    const { customers, addCustomer, deleteCustomer, isValidTurkishPlate } = useService();
+    const { customers, addCustomer, deleteCustomer } = useService();
     const { vehicles } = useService();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
@@ -11,15 +10,14 @@ export default function Musteriler() {
     // Ozel Silme Modali Icin State
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, name: '' });
 
-    const [formData, setFormData] = useState({ name: '', phone: '', province: '34', letters: '', digits: '' });
+    const [formData, setFormData] = useState({ name: '', phone: '' });
     const [error, setError] = useState('');
     const [errorFields, setErrorFields] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
 
     const filteredMusteriler = customers.filter(m =>
-        m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.phone.includes(searchTerm) ||
-        m.plate.toLowerCase().includes(searchTerm.toLowerCase())
+        m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.phone?.includes(searchTerm)
     );
 
     const formatPhoneDisplay = (phone) => {
@@ -29,13 +27,10 @@ export default function Musteriler() {
         return cleaned;
     };
 
-    const buildPlate = () => `${formData.province} ${formData.letters.toUpperCase()} ${formData.digits}`;
-
     const handleAddCustomer = async () => {
         const errors = [];
         if (!formData.name.trim()) errors.push('name');
         if (!formData.phone.trim() || formData.phone.length < 10) errors.push('phone');
-        if (!formData.letters || !formData.digits) errors.push('plate');
 
         if (errors.length > 0) {
             setErrorFields(errors);
@@ -43,16 +38,20 @@ export default function Musteriler() {
             return;
         }
 
-        const plate = buildPlate();
-        if (!isValidTurkishPlate(plate)) {
-            setErrorFields(['plate']);
-            setError('Plaka formati hatali.');
+        const duplicateExists = customers.some(c =>
+            c.name?.toLowerCase() === formData.name.trim().toLowerCase() &&
+            String(c.phone || '').replace(/\D/g, '') === String(formData.phone || '').replace(/\D/g, '')
+        );
+
+        if (duplicateExists) {
+            setErrorFields(['name', 'phone']);
+            setError('Bu isim ve telefon numarası ile kayıtlı bir müşteri zaten var.');
             return;
         }
 
         try {
             setIsSaving(true);
-            await addCustomer({ name: formData.name, phone: formData.phone, plate: plate });
+            await addCustomer({ name: formData.name, phone: formData.phone, plate: '' });
             closeModal();
         } catch (saveError) {
             setError(saveError.message || 'Müşteri kaydedilemedi.');
@@ -62,7 +61,7 @@ export default function Musteriler() {
     };
 
     const closeModal = () => {
-        setFormData({ name: '', phone: '', province: '34', letters: '', digits: '' });
+        setFormData({ name: '', phone: '' });
         setError('');
         setErrorFields([]);
         setShowAddModal(false);
@@ -84,7 +83,7 @@ export default function Musteriler() {
 
             <div className="relative mb-8">
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500 font-black tracking-widest text-sm">ARA</div>
-                <input type="text" placeholder="Isim, Telefon veya Plaka ile arayin..." className="w-full p-4 pl-20 bg-[var(--bg-card)] border border-[var(--border-strong)]/50 rounded-xl text-base text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all shadow-lg placeholder:text-gray-600" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <input type="text" placeholder="Isim ve Telefon ile arayinız" className="w-full p-4 pl-20 bg-[var(--bg-card)] border border-[var(--border-strong)]/50 rounded-xl text-base text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all shadow-lg placeholder:text-gray-600" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -124,7 +123,6 @@ export default function Musteriler() {
                                     <input type="tel" placeholder="5XX XXX XX XX" value={formatPhoneDisplay(formData.phone)} onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} className={`flex-1 p-4 bg-[var(--bg-main)] border rounded-xl text-[var(--text-primary)] outline-none transition-all placeholder:text-gray-700 font-sans ${errorFields.includes('phone') ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.1)]' : 'border-[var(--border-strong)] focus:border-[var(--accent)]'}`} />
                                 </div>
                             </div>
-                            <PlateInput province={formData.province} letters={formData.letters} digits={formData.digits} onChange={(field, val) => setFormData(prev => ({ ...prev, [field]: val }))} error={errorFields.includes('plate')} />
                             {error && <p className="text-xs font-bold text-red-400 mt-2 animate-pulse">{error}</p>}
                         </div>
                         <div className="flex gap-4 mt-8 pt-6 border-t border-[var(--border-strong)]/30">

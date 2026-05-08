@@ -21,4 +21,6 @@ public class ServiceFormUpdateDto {
 
   @Size(max = 2000, message = Messages.SERVICE_FORM_CONDITION_SIZE)
   private String generalCondition;
+
+  private Integer assignedStaffId;
 }

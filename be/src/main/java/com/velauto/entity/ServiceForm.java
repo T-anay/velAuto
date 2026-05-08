@@ -34,6 +34,9 @@ public class ServiceForm {
   @Column(name = "customer_id", nullable = false)
   private Integer customerId;
 
+  @Column(name = "assigned_staff_id")
+  private Integer assignedStaffId;
+
   @Column(name = "current_km", nullable = false)
   private Integer currentKm;
 

@@ -1,5 +1,6 @@
 package com.velauto.dto;
 
+import com.velauto.entity.enums.ServiceFormItemStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,6 +27,7 @@ public class ServiceFormItemResponseDto {
 
   private BigDecimal lineTotal;
 
+  private ServiceFormItemStatus status;
 
   private Integer createdBy;
 

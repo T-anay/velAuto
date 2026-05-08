@@ -1,6 +1,7 @@
 package com.velauto.dto;
 
 import com.velauto.constant.Messages;
+import com.velauto.entity.enums.ServiceFormItemStatus;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,5 +24,7 @@ public class ServiceFormItemCreateDto {
   @Min(value = 1, message = Messages.SERVICE_FORM_ITEM_QUANTITY_MIN)
   @Max(value = 1000, message = Messages.SERVICE_FORM_ITEM_QUANTITY_MAX)
   private Integer quantity;
+
+  private ServiceFormItemStatus status;
 }
 

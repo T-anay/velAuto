@@ -34,4 +34,6 @@ public class ServiceFormCreateDto {
 
   // React'ten gelen statüyü yakalayabilmek için eklendi
   private String status;
+
+  private Integer assignedStaffId;
 }

@@ -21,7 +21,7 @@ spring:
     enabled: ${LIQUIBASE_ENABLED:true}
     change-log: ${LIQUIBASE_CHANGELOG:classpath:db/changelog/db.changelog-master.yaml}
     clear-checksums: true
-    drop-first: true  # Database'i tamamen reset etmek için true yapıldı
+    drop-first: false  # Database'i tamamen reset etmek için true yapıldı
 
   # Gemini AI Konfigürasyonu
   ai:

@@ -2,6 +2,7 @@ package com.velauto.controller;
 
 import com.velauto.dto.ServiceFormItemCreateDto;
 import com.velauto.dto.ServiceFormItemResponseDto;
+import com.velauto.dto.ServiceFormItemStatusUpdateDto;
 import com.velauto.security.CustomUserDetails;
 import com.velauto.service.ServiceFormItemService;
 import jakarta.validation.Valid;
@@ -59,6 +60,21 @@ public class ServiceFormItemController {
     Page<ServiceFormItemResponseDto> response = serviceFormItemService.getItemsByServiceForm(
         serviceFormId,
         pageable
+    );
+    return ResponseEntity.ok(response);
+  }
+
+  @PatchMapping("/{id}/status")
+  @PreAuthorize("hasAnyRole('admin', 'manager', 'staff')")
+  public ResponseEntity<ServiceFormItemResponseDto> updateItemStatus(
+      @PathVariable Integer id,
+      @Valid @RequestBody ServiceFormItemStatusUpdateDto request,
+      @AuthenticationPrincipal CustomUserDetails userDetails
+  ) {
+    ServiceFormItemResponseDto response = serviceFormItemService.updateItemStatus(
+        id,
+        request.getStatus(),
+        userDetails.getUserId()
     );
     return ResponseEntity.ok(response);
   }

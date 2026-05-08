@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
+import PublicAppointment from './pages/PublicAppointment';
 import Dashboard from './pages/Dashboard';
 import VehicleEntry from './pages/VehicleEntry';
 import ActiveJobs from './pages/ActiveJobs';
@@ -22,7 +23,8 @@ import ToastHost from './components/ToastHost';
 function AppContent() {
   const location = useLocation();
   const { user, isBootstrapping } = useService();
-  const isLoginPage = location.pathname === '/';
+  const publicPages = ['/', '/public-appointment'];
+  const isLoginPage = publicPages.includes(location.pathname);
 
   if (isBootstrapping) {
     return (
@@ -45,6 +47,7 @@ function AppContent() {
       <main className={`flex-1 overflow-y-auto ${isLoginPage ? 'flex items-center justify-center p-6' : 'p-6 md:p-8'}`}>
         <Routes>
           <Route path="/" element={<Login />} />
+          <Route path="/public-appointment" element={<PublicAppointment />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/vehicle-entry" element={<VehicleEntry />} />
           <Route path="/active-jobs" element={<ActiveJobs />} />

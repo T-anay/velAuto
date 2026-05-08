@@ -27,10 +27,8 @@ public class ServiceCatalogController {
   public ResponseEntity<Page<ServiceCatalogResponseDto>> list(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "20") int size,
-      @RequestParam(required = false) Integer tenantId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    Integer tId = tenantId != null ? tenantId : 1;
     Pageable pageable = PageRequest.of(page, size);
     Page<ServiceCatalogResponseDto> result = service.getServiceCatalogsByTenant(pageable);
     return ResponseEntity.ok(result);
@@ -38,10 +36,8 @@ public class ServiceCatalogController {
 
   @GetMapping("/all")
   public ResponseEntity<List<ServiceCatalogResponseDto>> listAll(
-      @RequestParam(required = false) Integer tenantId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    Integer tId = tenantId != null ? tenantId : 1;
     List<ServiceCatalogResponseDto> list = service.getAllByTenant();
     return ResponseEntity.ok(list);
   }
@@ -49,11 +45,9 @@ public class ServiceCatalogController {
   @GetMapping("/{id}")
   public ResponseEntity<ServiceCatalogResponseDto> getById(
       @org.springframework.web.bind.annotation.PathVariable Integer id,
-      @RequestParam(required = false) Integer tenantId,
       @AuthenticationPrincipal CustomUserDetails userDetails
   ) {
-    Integer tId = tenantId != null ? tenantId : 1;
-    ServiceCatalogResponseDto dto = service.getById(id, tId);
+    ServiceCatalogResponseDto dto = service.getById(id, userDetails.getUserId());
     return ResponseEntity.ok(dto);
   }
 }

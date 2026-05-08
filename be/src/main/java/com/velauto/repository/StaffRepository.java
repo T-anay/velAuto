@@ -2,6 +2,7 @@ package com.velauto.repository;
 
 import com.velauto.entity.Staff;
 import com.velauto.entity.User;
+import com.velauto.entity.enums.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,4 +25,7 @@ public interface StaffRepository extends JpaRepository<Staff, Integer> {
   // Soft delete filtreli staff sayısı
   @Query("SELECT COUNT(s) FROM Staff s WHERE s.deletedAt IS NULL")
   long countByDeletedAtIsNull();
+
+  @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END FROM Staff s WHERE s.deletedAt IS NULL AND s.user.deletedAt IS NULL AND s.user.role = :role")
+  boolean existsActiveStaffByUserRole(@Param("role") Role role);
 }

@@ -23,6 +23,8 @@ public class ServiceFormResponseDto {
 
   private Integer customerId;
 
+  private Integer assignedStaffId;
+
   private Integer currentKm;
 
   private String complaints;

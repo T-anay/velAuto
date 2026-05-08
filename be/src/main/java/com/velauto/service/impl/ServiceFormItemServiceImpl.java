@@ -7,6 +7,7 @@ import com.velauto.entity.ServiceForm;
 import com.velauto.entity.ServiceCatalog;
 import com.velauto.entity.ServiceFormItem;
 import com.velauto.entity.enums.ServiceFormStatus;
+import com.velauto.entity.enums.ServiceFormItemStatus;
 import com.velauto.exception.BusinessException;
 import com.velauto.mapper.ServiceFormItemMapper;
 import com.velauto.repository.ServiceFormItemRepository;
@@ -102,6 +103,9 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
 
     item.setCreatedBy(userId);
     item.setCreatedAt(LocalDateTime.now());
+    if (item.getStatus() == null) {
+      item.setStatus(ServiceFormItemStatus.BEKLIYOR);
+    }
 
     // Save item
     ServiceFormItem savedItem = serviceFormItemRepository.save(item);
@@ -177,6 +181,40 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
         pageable
     );
     return items.map(serviceFormItemMapper::toResponseDto);
+  }
+
+  @Override
+  public ServiceFormItemResponseDto updateItemStatus(
+      Integer itemId,
+      ServiceFormItemStatus status,
+      Integer userId
+  ) {
+    if (itemId == null || status == null) {
+      throw new BusinessException(Messages.INVALID_REQUEST);
+    }
+
+    ServiceFormItem item = serviceFormItemRepository.findByIdAndDeletedAtIsNull(itemId)
+        .orElseThrow(() -> new BusinessException(Messages.SERVICE_FORM_ITEM_NOT_FOUND));
+
+    ServiceForm form = serviceFormRepository.findByIdAndDeletedAtIsNull(item.getServiceFormId())
+        .orElseThrow(() -> new BusinessException(Messages.SERVICE_FORM_NOT_FOUND));
+
+    if (form.getIsLocked() != null && form.getIsLocked()) {
+      throw new BusinessException(Messages.SERVICE_FORM_LOCKED);
+    }
+    if (form.getStatus() == ServiceFormStatus.COMPLETED) {
+      throw new BusinessException(Messages.SERVICE_FORM_COMPLETED);
+    }
+
+    item.setStatus(status);
+    item.setUpdatedBy(userId);
+    item.setUpdatedAt(LocalDateTime.now());
+
+    ServiceFormItem savedItem = serviceFormItemRepository.save(item);
+    auditLogService.log(userId, "SERVICE_FORM_ITEM_STATUS_UPDATED", "SERVICE_FORM_ITEM", itemId,
+        "Status updated: " + status);
+
+    return serviceFormItemMapper.toResponseDto(savedItem);
   }
 
   @Override

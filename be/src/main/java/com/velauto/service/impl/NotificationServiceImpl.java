@@ -28,6 +28,22 @@ public class NotificationServiceImpl implements NotificationService {
   }
 
   @Override
+  public void sendStaffWelcomeEmail(String email, String rawPassword) {
+    System.out.println("=".repeat(80));
+    System.out.println("MOCK MAIL: Staff Welcome Password");
+    System.out.println("=".repeat(80));
+    System.out.println("TO: " + email);
+    System.out.println("SUBJECT: velAuto personel hesabi");
+    System.out.println("MESSAGE:");
+    System.out.println("---");
+    System.out.println("velAuto personel hesabiniz olusturuldu.");
+    System.out.println("E-posta: " + email);
+    System.out.println("Gecici sifre: " + rawPassword);
+    System.out.println("---");
+    System.out.println("=".repeat(80));
+  }
+
+  @Override
   public void sendAppointmentConfirmation(String phone, String appointmentDetails) {
     System.out.println("=".repeat(80));
     System.out.println("📧 MOCK NOTIFICATION: Appointment Confirmation");

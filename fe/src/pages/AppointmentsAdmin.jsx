@@ -29,23 +29,10 @@ const endOfDay = (date) => {
 
 export default function AppointmentsAdmin() {
   const navigate = useNavigate();
-  const { appointments, approveAppointment, addJob } = useService();
+  const { appointments, approveAppointment, addJob, getAppointmentStatus, setAppointmentOverride } = useService();
   const [viewMode, setViewMode] = useState('DAILY');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
-  const [statusOverrides, setStatusOverrides] = useState(loadStatusOverrides);
   const [convertingId, setConvertingId] = useState(null);
-
-  const setOverride = (id, status) => {
-    setStatusOverrides((prev) => {
-      const next = { ...prev, [id]: status };
-      localStorage.setItem(STATUS_STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  };
-
-  const getStatus = (appointment) => {
-    return statusOverrides[appointment.id] || (appointment.status === 'ONAYLI' ? 'APPROVED' : 'PENDING');
-  };
 
   const range = useMemo(() => {
     const base = startOfDay(`${selectedDate}T00:00:00`);
@@ -60,14 +47,33 @@ export default function AppointmentsAdmin() {
 
   const filteredAppointments = useMemo(() => {
     return appointments
-      .map((appointment) => ({ ...appointment, _status: getStatus(appointment) }))
+      .map((appointment) => {
+        const statusObj = getAppointmentStatus(appointment);
+        return { ...appointment, _status: statusObj.status, _convertedAt: statusObj.at };
+      })
       .filter((appointment) => {
         const date = new Date(appointment.time);
         if (Number.isNaN(date.getTime())) return false;
         return date >= range.from && date <= range.to;
       })
       .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
-  }, [appointments, range.from, range.to, statusOverrides]);
+  }, [appointments, range.from, range.to, getAppointmentStatus]);
+
+  const pastApprovedAppointments = useMemo(() => {
+    const today = startOfDay(new Date());
+    return appointments
+      .map((appointment) => {
+        const statusObj = getAppointmentStatus(appointment);
+        return { ...appointment, _status: statusObj.status, _convertedAt: statusObj.at };
+      })
+      .filter((appointment) => {
+        const date = new Date(appointment.time);
+        if (Number.isNaN(date.getTime())) return false;
+        return date < today && (appointment._status === 'APPROVED' || appointment._status === 'CONVERTED');
+      })
+      .filter(app => !filteredAppointments.some(fa => fa.id === app.id))
+      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  }, [appointments, getAppointmentStatus, filteredAppointments]);
 
   const stats = useMemo(() => {
     const pending = filteredAppointments.filter((appointment) => appointment._status === 'PENDING').length;
@@ -78,11 +84,11 @@ export default function AppointmentsAdmin() {
 
   const handleApprove = async (id) => {
     await approveAppointment(id);
-    setOverride(id, 'APPROVED');
+    setAppointmentOverride(id, 'APPROVED');
   };
 
   const handleCancel = (id) => {
-    setOverride(id, 'CANCELLED');
+    setAppointmentOverride(id, 'CANCELLED');
     pushToast({ type: 'info', title: 'Randevu iptal edildi', message: 'Takvim durumu iptal olarak işaretlendi.' });
   };
 
@@ -99,7 +105,7 @@ export default function AppointmentsAdmin() {
         brand: appointment.brand,
         model: appointment.model,
       });
-      setOverride(appointment.id, 'CONVERTED');
+      setAppointmentOverride(appointment.id, 'CONVERTED');
       pushToast({ type: 'success', title: 'İş emrine aktarıldı', message: `${appointment.plate} için servis kaydı oluşturuldu.` });
       navigate('/active-jobs');
     } finally {
@@ -139,6 +145,7 @@ export default function AppointmentsAdmin() {
 
           {filteredAppointments.map((appointment) => {
             const status = appointment._status;
+            const convertedAt = appointment._convertedAt;
             return (
               <article key={appointment.id} className="rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] p-4">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
@@ -150,16 +157,23 @@ export default function AppointmentsAdmin() {
                   </div>
 
                   <div className="space-y-2 min-w-[220px]">
-                    <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${status === 'APPROVED'
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`inline-flex px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest border ${status === 'APPROVED'
                         ? 'border-[var(--success)]/40 text-[var(--success)] bg-[var(--success)]/10'
                         : status === 'CANCELLED'
                           ? 'border-[var(--danger)]/40 text-[var(--danger)] bg-[var(--danger)]/10'
                           : status === 'CONVERTED'
                             ? 'border-[var(--accent)]/40 text-[var(--accent)] bg-[var(--accent)]/10'
                             : 'border-[var(--border-soft)] text-[var(--text-secondary)] bg-white'
-                      }`}>
-                      {status === 'PENDING' ? 'Bekliyor' : status === 'APPROVED' ? 'Onaylı' : status === 'CANCELLED' ? 'İptal' : 'İş Emrine Aktarıldı'}
-                    </span>
+                        }`}>
+                        {status === 'PENDING' ? 'Bekliyor' : status === 'APPROVED' ? 'Onaylı' : status === 'CANCELLED' ? 'İptal' : 'İş Emrine Aktarıldı'}
+                      </span>
+                      {status === 'CONVERTED' && convertedAt && (
+                        <span className="text-[10px] text-[var(--accent)] font-bold italic">
+                          Aktarılma: {new Date(convertedAt).toLocaleString('tr-TR')}
+                        </span>
+                      )}
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <button
@@ -194,6 +208,69 @@ export default function AppointmentsAdmin() {
           })}
         </div>
       </section>
+
+      {pastApprovedAppointments.length > 0 && (
+        <section className="bg-[var(--bg-card)]/50 border border-[var(--border-soft)] rounded-2xl p-6 shadow-lg border-dashed">
+          <h2 className="text-sm font-black text-[var(--text-secondary)] uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse"></span>
+            Geçmiş Onaylı / Aktarılan Randevular
+          </h2>
+          <div className="space-y-3">
+            {pastApprovedAppointments.map((appointment) => {
+              const status = appointment._status;
+              const convertedAt = appointment._convertedAt;
+              return (
+                <article key={appointment.id} className="rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]/50 p-4 opacity-80 hover:opacity-100 transition-opacity">
+                  <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">{new Date(appointment.time).toLocaleString('tr-TR')}</p>
+                      <h3 className="text-lg font-black text-[var(--text-primary)] mt-1">{appointment.plate}</h3>
+                      <p className="text-sm text-[var(--text-secondary)] mt-1">{appointment.customer} • {appointment.phone || 'Telefon yok'}</p>
+                    </div>
+
+                    <div className="space-y-2 min-w-[220px]">
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`inline-flex px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${status === 'APPROVED'
+                          ? 'border-[var(--success)]/40 text-[var(--success)] bg-[var(--success)]/10'
+                          : 'border-[var(--accent)]/40 text-[var(--accent)] bg-[var(--accent)]/10'
+                          }`}>
+                          {status === 'APPROVED' ? 'Onaylı (Geçmiş)' : 'İş Emrine Aktarıldı'}
+                        </span>
+                        {status === 'CONVERTED' && convertedAt && (
+                          <span className="text-[10px] text-[var(--accent)] font-bold italic">
+                            Aktarılma: {new Date(convertedAt).toLocaleString('tr-TR')}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {status === 'APPROVED' && (
+                          <button
+                            type="button"
+                            onClick={() => handleConvertToJob(appointment)}
+                            disabled={convertingId === appointment.id}
+                            className="col-span-2 px-3 py-2 rounded-lg text-xs font-black uppercase tracking-widest bg-[var(--accent)] text-white"
+                          >
+                            {convertingId === appointment.id ? 'Aktarılıyor' : 'Şimdi İş Emri Aç'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleCancel(appointment.id)}
+                          disabled={status === 'CONVERTED'}
+                          className="px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest border border-[var(--danger)]/40 text-[var(--danger)] disabled:opacity-50"
+                        >
+                          Kaldır / İptal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

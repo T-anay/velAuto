@@ -73,7 +73,6 @@ CREATE TABLE staff (
                        user_id INT NOT NULL,
                        full_name VARCHAR(100) NOT NULL,
                        phone VARCHAR(20) DEFAULT NULL,
-                       title VARCHAR(100) DEFAULT NULL,
                        created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
                        CONSTRAINT staff_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );

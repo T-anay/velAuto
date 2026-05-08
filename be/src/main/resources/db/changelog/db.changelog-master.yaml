@@ -29,3 +29,5 @@ databaseChangeLog:
       file: db/changelog/changes/014-normalize-user-role-enum.sql
   - include:
       file: db/changelog/changes/015-nullable-user-email.sql
+  - include:
+      file: db/changelog/changes/016-staff-service-form-public-updates.sql

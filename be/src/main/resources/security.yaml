@@ -31,6 +31,11 @@ security:
       description: "Şifre sıfırla (Public)"
       roles: []
 
+    - path: "/api/public/appointments"
+      method: "POST"
+      description: "Public randevu talebi"
+      roles: []
+
     # ==========================================
     # AUTH - PROTECTED ENDPOINTS (Kimlik doğrulama gerekli)
     # ==========================================
@@ -55,6 +60,16 @@ security:
     - path: "/api/v1/auth/staff/create"
       method: "POST"
       description: "Personel kullanıcı oluştur"
+      roles: ["ADMIN", "SUPER_ADMIN"]
+
+    - path: "/api/v1/staff"
+      method: "GET"
+      description: "Personel listesi"
+      roles: ["ADMIN", "STAFF", "SUPER_ADMIN"]
+
+    - path: "/api/v1/staff/{id}"
+      method: "DELETE"
+      description: "Personel sil"
       roles: ["ADMIN", "SUPER_ADMIN"]
 
     # ==========================================

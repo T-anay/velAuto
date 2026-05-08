@@ -97,6 +97,7 @@ const normalizeServiceItem = (item) => ({
   quantity: toNumber(item?.quantity, 1),
   unitPrice: toNumber(item?.unitPrice ?? item?.price ?? item?.amount, 0),
   taxRate: toNumber(item?.taxRate, 0),
+  status: normalizeText(item?.status, 'BEKLIYOR').toUpperCase(),
 });
 
 export const normalizeCustomer = (customer) => ({
@@ -207,7 +208,8 @@ export const normalizeServiceForm = (form, customerLookup = new Map(), vehicleLo
     complaint: normalizeText(form?.description, form?.complaint, vehicle?.complaint),
     status: jobStatus.status,
     color: jobStatus.color,
-    items,
+  items,
+    assignedStaffId: form?.assignedStaffId ?? null,
     total: toNumber(form?.totalAmount ?? form?.total, totalFromItems),
     paid: Boolean(form?.paid),
     raw: form,
@@ -385,6 +387,7 @@ export const api = {
     create: (payload) => request('/api/v1/appointments', { method: 'POST', body: payload }),
     update: (id, payload) => request(`/api/v1/appointments/${id}`, { method: 'PUT', body: payload }),
     remove: (id) => request(`/api/v1/appointments/${id}`, { method: 'DELETE' }),
+    createPublic: (payload) => request('/api/public/appointments', { method: 'POST', auth: false, body: payload }),
   },
   serviceCatalog: {
     list: (params = '') => request(`/api/v1/service-catalogs${params}`),
@@ -397,12 +400,21 @@ export const api = {
     list: (params = '') => request(`/api/v1/service-forms${params}`),
     get: (id) => request(`/api/v1/service-forms/${id}`),
     create: (payload) => request('/api/v1/service-forms/direct', { method: 'POST', body: payload }),
+    createFromAppointment: (appointmentId, payload) => request(`/api/v1/service-forms/from-appointment/${appointmentId}`, { method: 'POST', body: payload }),
     update: (id, payload) => request(`/api/v1/service-forms/${id}`, { method: 'PUT', body: payload }),
+    complete: (id) => request(`/api/v1/service-forms/${id}/complete`, { method: 'PATCH' }),
+    assignStaff: (id, payload) => request(`/api/v1/service-forms/${id}/assign-staff`, { method: 'PATCH', body: payload }),
     remove: (id) => request(`/api/v1/service-forms/${id}`, { method: 'DELETE' }),
   },
   serviceFormItems: {
     get: (id) => request(`/api/v1/service-form-items/${id}`),
+    listByForm: (serviceFormId, params = '?page=0&size=100') => request(`/api/v1/service-form-items/by-form/${serviceFormId}${params}`),
     create: (payload) => request('/api/v1/service-form-items', { method: 'POST', body: payload }),
+    updateStatus: (id, status) => request(`/api/v1/service-form-items/${id}/status`, { method: 'PATCH', body: { status } }),
+  },
+  staff: {
+    list: () => request('/api/v1/staff'),
+    remove: (id) => request(`/api/v1/staff/${id}`, { method: 'DELETE' }),
   },
   payments: {
     list: (params = '') => request(`/api/v1/payments${params}`),

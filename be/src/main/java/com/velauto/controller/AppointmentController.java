@@ -142,26 +142,4 @@ public class AppointmentController {
     return ResponseEntity.noContent().build();
   }
 
-  /**
-   * Public Online Appointment Booking
-   * POST /api/v1/appointments/public/{tenantId}/book
-   * - No JWT required (permitAll)
-   * - TenantId: Path variable (hybrid strategy, CORS uyumu için)
-   * - Form-data ile multipart file upload
-   * - Müşteri/araç otomatik tespiti ve yaratma
-   * - Status: PENDING (Onay Bekliyor)
-   */
-  @PostMapping("/public/{tenantId}/book")
-  public ResponseEntity<AppointmentResponseDto> bookPublicAppointment(
-      @PathVariable Integer tenantId,
-      @ModelAttribute com.velauto.dto.PublicAppointmentRequestDto request
-  ) {
-
-    if (tenantId == null || tenantId <= 0) {
-      return ResponseEntity.badRequest().build();
-    }
-
-    AppointmentResponseDto response = appointmentService.bookOnlineAppointment(request);
-    return ResponseEntity.status(HttpStatus.CREATED).body(response);
-  }
 }

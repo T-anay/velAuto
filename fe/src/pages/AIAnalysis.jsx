@@ -1,161 +1,144 @@
 import { useMemo, useState } from 'react';
+import BackButton from '../components/BackButton';
 import { pushToast } from '../lib/toastBus';
+import { aiCatalogCategories, mapDamageToCatalog } from '../constants/damageCatalogMap';
+import { applyBrandMultiplier, getBrandTier } from '../constants/brandTiers';
 
 const KEYWORD_MAP = [
-  { keywords: ['titreme', 'sarsıntı', 'vibrasyon'], suggestion: 'Balans / Rot ayarı kontrolü', confidence: 84 },
-  { keywords: ['çekiş', 'hızlanmıyor', 'performans'], suggestion: 'Yakıt filtresi ve enjektör temizliği', confidence: 78 },
-  { keywords: ['fren', 'ses', 'ötme'], suggestion: 'Fren balatası ve disk kontrolü', confidence: 90 },
-  { keywords: ['hararet', 'ısınma', 'su eksiltme'], suggestion: 'Radyatör ve termostat testi', confidence: 88 },
-  { keywords: ['marş', 'çalışmıyor', 'akü'], suggestion: 'Akü ve marş motoru ölçümü', confidence: 86 },
-  { keywords: ['duman', 'egzoz'], suggestion: 'Egzoz emisyon ve turbo kaçağı kontrolü', confidence: 75 },
+  { keywords: ['titreme', 'sarsinti', 'vibrasyon'], suggestion: 'Mekanik Kontrol', confidence: 84 },
+  { keywords: ['fren', 'ses', 'otme'], suggestion: 'Fren Sistemi', confidence: 90 },
+  { keywords: ['hararet', 'isinma', 'su'], suggestion: 'Mekanik Kontrol', confidence: 88 },
+  { keywords: ['cizik', 'boya'], suggestion: 'Boya Islemi', confidence: 82 },
+  { keywords: ['gocuk', 'kaporta'], suggestion: 'Kaporta Onarim', confidence: 86 },
+  { keywords: ['far', 'elektrik'], suggestion: 'Elektrik Diagnostik', confidence: 76 },
 ];
-
-const extractImageHint = (fileName) => {
-  const normalized = fileName.toLowerCase();
-  if (normalized.includes('fren')) return 'Fren sistemi hasar izi algılandı.';
-  if (normalized.includes('motor')) return 'Motor bölümünde yağ/sızdırma şüphesi.';
-  if (normalized.includes('kaput') || normalized.includes('hasar')) return 'Kaporta hasarı kalemleri eşleştirildi.';
-  if (normalized.includes('lastik')) return 'Lastik aşınma paterni analizi önerildi.';
-  return 'Genel görsel tarama tamamlandı.';
-};
 
 export default function AIAnalysis() {
   const [complaintText, setComplaintText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [analysisRunAt, setAnalysisRunAt] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(aiCatalogCategories[0]);
+  const [brand, setBrand] = useState('');
+  const [remoteSuggestions, setRemoteSuggestions] = useState([]);
   const [selectedSuggestions, setSelectedSuggestions] = useState([]);
+  const [isRunning, setIsRunning] = useState(false);
 
-  const textSuggestions = useMemo(() => {
+  const keywordSuggestions = useMemo(() => {
     const text = complaintText.toLowerCase();
-    if (!text.trim()) return [];
-
-    const matches = KEYWORD_MAP.filter((item) => item.keywords.some((keyword) => text.includes(keyword)));
-    const unique = new Map();
-    matches.forEach((item) => unique.set(item.suggestion, item));
-    return Array.from(unique.values());
+    return KEYWORD_MAP
+      .filter((item) => item.keywords.some((keyword) => text.includes(keyword)))
+      .map((item) => ({ type: 'KEYWORD', label: item.suggestion, confidence: item.confidence }));
   }, [complaintText]);
 
-  const visualSuggestions = useMemo(() => {
-    return uploadedFiles.map((file) => ({
-      fileName: file.name,
-      suggestion: extractImageHint(file.name),
-    }));
-  }, [uploadedFiles]);
+  const fileFallbackSuggestions = useMemo(() => uploadedFiles.flatMap((file) => (
+    mapDamageToCatalog(file.name).map((category) => ({ type: 'FALLBACK', label: category, confidence: 70 }))
+  )), [uploadedFiles]);
 
   const allSuggestions = useMemo(() => {
-    const base = textSuggestions.map((item) => ({
-      type: 'METIN',
-      label: item.suggestion,
-      confidence: item.confidence,
-    }));
-    const visual = visualSuggestions.map((item, index) => ({
-      type: 'GORSEL',
-      label: `${item.suggestion} (${item.fileName})`,
-      confidence: 70 + (index % 20),
-    }));
-    return [...base, ...visual];
-  }, [textSuggestions, visualSuggestions]);
+    const unique = new Map();
+    [...remoteSuggestions, ...keywordSuggestions, ...fileFallbackSuggestions, { type: 'MANUEL', label: selectedCategory, confidence: 65 }]
+      .forEach((item) => unique.set(`${item.type}-${item.label}`, item));
+    return Array.from(unique.values());
+  }, [remoteSuggestions, keywordSuggestions, fileFallbackSuggestions, selectedCategory]);
 
-  const runAnalysis = () => {
+  const runAnalysis = async () => {
+    setIsRunning(true);
+    const next = [];
+
+    try {
+      const ollama = await fetch('http://localhost:11434/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'llama3', prompt: `Bu sikayeti servis katalog kategorilerine esle: ${complaintText}`, stream: false }),
+      }).then((res) => (res.ok ? res.json() : null));
+
+      if (ollama?.response) {
+        next.push({ type: 'OLLAMA', label: ollama.response.slice(0, 120), confidence: 80 });
+      }
+    } catch {
+      // Keyword fallback below remains active.
+    }
+
+    if (uploadedFiles.length > 0) {
+      try {
+        const formData = new FormData();
+        uploadedFiles.forEach((file) => formData.append('files', file));
+        const yolo = await fetch('http://localhost:8000/analyze', { method: 'POST', body: formData }).then((res) => (res.ok ? res.json() : null));
+        const detections = Array.isArray(yolo?.detections) ? yolo.detections : [];
+        detections.forEach((detection) => {
+          mapDamageToCatalog(detection.label || detection.name).forEach((category) => {
+            next.push({ type: 'YOLO', label: category, confidence: Math.round((detection.confidence || 0.75) * 100) });
+          });
+        });
+      } catch {
+        // Filename fallback below remains active.
+      }
+    }
+
+    setRemoteSuggestions(next);
     setAnalysisRunAt(new Date().toLocaleString('tr-TR'));
-    pushToast({ type: 'success', title: 'Analiz çalıştı', message: 'Şikayet metni ve görsel önerileri güncellendi.' });
+    setIsRunning(false);
+    pushToast({ type: 'success', title: 'Analiz tamamlandi', message: next.length ? 'Lokal AI yaniti alindi.' : 'Fallback eslestirme kullanildi.' });
   };
 
   const toggleSuggestion = (label) => {
     setSelectedSuggestions((prev) => prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]);
-    pushToast({ type: 'info', title: 'Kalem seçildi', message: `${label} servise eklenecek seçimlere alındı.` });
   };
+
+  const tier = getBrandTier(brand);
+  const estimatedPrice = applyBrandMultiplier(1000, brand);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+      <BackButton />
       <div>
-        <p className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-muted)] font-black">Gemini + Vertex AI</p>
-        <h1 className="text-3xl font-black text-[var(--text-primary)] mt-2">Akıllı Teşhis ve AI Analizi</h1>
-        <p className="text-[var(--text-secondary)] mt-2">Şikayet metni ve görsel verilerden servis kalemi önerilerini otomatik üretir.</p>
+        <p className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-muted)] font-black">YOLO + Ollama + Fallback</p>
+        <h1 className="text-3xl font-black text-[var(--text-primary)] mt-2">Akilli Teshis ve AI Analizi</h1>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-black text-[var(--text-primary)]">Metin Analizi</h2>
-          <textarea
-            value={complaintText}
-            onChange={(e) => setComplaintText(e.target.value)}
-            className="w-full mt-4 p-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] min-h-40"
-            placeholder="Örn: Araç düşük hızda titreme yapıyor, fren yapınca ses geliyor..."
-          />
-          <button
-            type="button"
-            onClick={runAnalysis}
-            className="mt-4 w-full p-3 rounded-xl bg-[var(--accent)] text-white font-black hover:brightness-110 transition-all"
-          >
-            METİN ANALİZİNİ ÇALIŞTIR
+          <h2 className="text-xl font-black text-[var(--text-primary)]">Analiz Girdileri</h2>
+          <textarea value={complaintText} onChange={(e) => setComplaintText(e.target.value)} className="w-full mt-4 p-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] min-h-36" placeholder="Sikayet metni..." />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <input value={brand} onChange={(e) => setBrand(e.target.value)} className="p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]" placeholder="Marka carpani icin marka" />
+            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]">
+              {aiCatalogCategories.map((category) => <option key={category}>{category}</option>)}
+            </select>
+          </div>
+          <input type="file" multiple accept="image/*" onChange={(e) => setUploadedFiles(Array.from(e.target.files || []))} className="w-full mt-3 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]" />
+          <button type="button" onClick={runAnalysis} disabled={isRunning} className="mt-4 w-full p-3 rounded-xl bg-[var(--accent)] text-white font-black hover:brightness-110 transition-all disabled:opacity-60">
+            {isRunning ? 'Analiz calisiyor...' : 'AI Analizini Calistir'}
           </button>
         </section>
 
         <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-black text-[var(--text-primary)]">Görsel İşleme</h2>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => setUploadedFiles(Array.from(e.target.files || []))}
-            className="w-full mt-4 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]"
-          />
-          <div className="mt-4 space-y-2">
-            {uploadedFiles.length === 0 && <p className="text-sm text-[var(--text-secondary)]">Henüz görsel yüklenmedi.</p>}
-            {uploadedFiles.map((file) => (
-              <div key={file.name} className="p-3 rounded-lg border border-[var(--border-soft)] bg-[var(--bg-main)] text-sm text-[var(--text-primary)]">
-                {file.name}
-              </div>
-            ))}
+          <h2 className="text-xl font-black text-[var(--text-primary)]">Fiyat Carpani</h2>
+          <div className="mt-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] p-5">
+            <p className="text-sm text-[var(--text-secondary)]">Sinif: <span className="font-black text-[var(--text-primary)]">{tier.label}</span></p>
+            <p className="text-sm text-[var(--text-secondary)] mt-2">Carpan: <span className="font-black text-[var(--accent)]">x{tier.multiplier}</span></p>
+            <p className="text-3xl font-black text-[var(--accent)] mt-4">{estimatedPrice.toLocaleString('tr-TR')} TL</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">1000 TL baz fiyat ornegi</p>
           </div>
+          <p className="text-sm text-[var(--text-secondary)] mt-4">{analysisRunAt ? `Son analiz: ${analysisRunAt}` : 'Analiz henuz calistirilmadi'}</p>
         </section>
       </div>
 
       <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-          <h2 className="text-xl font-black text-[var(--text-primary)]">Önerilen Teşhis Kalemleri</h2>
-          <p className="text-sm text-[var(--text-secondary)]">{analysisRunAt ? `Son analiz: ${analysisRunAt}` : 'Analiz henüz çalıştırılmadı'}</p>
-        </div>
-
+        <h2 className="text-xl font-black text-[var(--text-primary)] mb-4">Onerilen Katalog Eslesmeleri</h2>
         <div className="space-y-3">
-          {allSuggestions.length === 0 && (
-            <div className="rounded-xl border border-dashed border-[var(--border-soft)] p-6 text-center text-[var(--text-secondary)]">
-              Şikayet metni yazıp veya görsel yükleyip analiz çalıştır.
-            </div>
-          )}
-
           {allSuggestions.map((item) => {
             const selected = selectedSuggestions.includes(item.label);
             return (
-              <button
-                type="button"
-                key={item.label}
-                onClick={() => toggleSuggestion(item.label)}
-                className={`w-full text-left rounded-xl border p-4 transition-all ${selected ? 'border-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border-soft)] bg-[var(--bg-main)]'}`}
-              >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                  <div>
-                    <p className="text-xs uppercase tracking-widest font-black text-[var(--text-muted)]">{item.type}</p>
-                    <h3 className="text-base font-bold text-[var(--text-primary)] mt-1">{item.label}</h3>
-                  </div>
-                  <span className="px-3 py-1 rounded-lg text-xs font-black border border-[var(--border-soft)] text-[var(--text-secondary)] bg-white">
-                    Güven: %{item.confidence}
-                  </span>
+              <button type="button" key={`${item.type}-${item.label}`} onClick={() => toggleSuggestion(item.label)} className={`w-full text-left rounded-xl border p-4 transition-all ${selected ? 'border-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border-soft)] bg-[var(--bg-main)]'}`}>
+                <p className="text-xs uppercase tracking-widest font-black text-[var(--text-muted)]">{item.type}</p>
+                <div className="mt-1 flex justify-between gap-3">
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">{item.label}</h3>
+                  <span className="text-xs font-black text-[var(--accent)]">%{item.confidence}</span>
                 </div>
               </button>
             );
           })}
-        </div>
-
-        <div className="mt-5 p-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]">
-          <p className="text-xs uppercase tracking-widest font-black text-[var(--text-muted)]">Servis Formuna Eklenecek Kalemler</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {selectedSuggestions.length === 0 && <span className="text-sm text-[var(--text-secondary)]">Henüz seçim yapılmadı.</span>}
-            {selectedSuggestions.map((item) => (
-              <span key={item} className="px-3 py-1 rounded-full text-xs font-black bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/25">{item}</span>
-            ))}
-          </div>
         </div>
       </section>
     </div>

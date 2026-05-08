@@ -50,22 +50,22 @@ export default function ActiveJobs() {
                             return 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]';
                         };
                         return (
-                        <div
-                            key={job.id}
-                            className={`bg-[var(--bg-card)] p-6 rounded-2xl border-t-4 hover:scale-[1.02] transition-all shadow-xl cursor-pointer ${getBorderColor(job.color)}`}
-                            onClick={() => navigate(`/job-detail/${job.id}`)}
-                        >
-                            <div className="flex justify-between items-start mb-3">
-                                <h2 className="text-2xl font-black">{job.plate}</h2>
-                                <span className={`px-3 py-1 rounded text-[10px] font-black border ${getBadgeColors(job.color)}`}>
-                                    {job.statusLabel || job.status}
-                                </span>
+                            <div
+                                key={job.id}
+                                className={`bg-[var(--bg-card)] p-6 rounded-2xl border-t-4 hover:scale-[1.02] transition-all shadow-xl cursor-pointer ${getBorderColor(job.color)}`}
+                                onClick={() => navigate(`/job-detail/${job.id}`)}
+                            >
+                                <div className="flex justify-between items-start mb-3">
+                                    <h2 className="text-2xl font-black">{job.plate}</h2>
+                                    <span className={`px-3 py-1 rounded text-[10px] font-black border ${getBadgeColors(job.color)}`}>
+                                        {job.statusLabel || job.status}
+                                    </span>
+                                </div>
+                                <p className="text-gray-400 font-semibold text-sm mb-2">{job.customer} • <span className="text-gray-600 text-xs">{job.brand}</span></p>
+
+
                             </div>
-                            <p className="text-gray-400 font-semibold text-sm mb-2">{job.customer} • <span className="text-gray-600 text-xs">{job.brand}</span></p>
-
-
-                        </div>
-                    );
+                        );
                     })}
                 </div>
             )}

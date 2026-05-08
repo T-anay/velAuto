@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useService } from '../context/ServiceContext';
 import { useTheme } from '../context/ThemeContext';
+import { useState, useEffect, useMemo } from 'react';
 
 const menuItems = [
   { path: '/dashboard', label: ' Atölye Özeti' },
@@ -8,14 +9,52 @@ const menuItems = [
   { path: '/active-jobs', label: ' Aktif İşler' },
   { path: '/appointments', label: ' Takvim' },
   { path: '/customers', label: ' Müşteriler' },
-  { path: '/cashier', label: ' Kasa & Tahsilat' },
+  { path: '/bildirimler', label: ' Bildirimler' },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useService();
+  const { user, logout, jobs = [], payments = [] } = useService();
   const { isDark, toggleTheme } = useTheme();
+
+  const [readStateVersion, setReadStateVersion] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setReadStateVersion(v => v + 1);
+    window.addEventListener('velauto_notifications_updated', handleUpdate);
+    return () => window.removeEventListener('velauto_notifications_updated', handleUpdate);
+  }, []);
+
+  const unreadCount = useMemo(() => {
+    // eslint-disable-next-line no-unused-expressions
+    readStateVersion; 
+
+    try {
+      const raw = localStorage.getItem('velauto_notifications_state_v1');
+      const readState = raw ? JSON.parse(raw) : {};
+      
+      let count = 0;
+      if (!readState['stock-1']) count++;
+      if (!readState['stock-2']) count++;
+      
+      const completedJobs = jobs.filter((job) => String(job.statusKey || job.status).toUpperCase() === 'COMPLETED').slice(0, 10);
+      completedJobs.forEach(job => {
+        if (!readState[`job-${job.id}`]) count++;
+      });
+      
+      const recentPayments = payments.slice(0, 10);
+      recentPayments.forEach(payment => {
+        if (!readState[`payment-${payment.id}`]) count++;
+      });
+      
+      return count;
+    } catch {
+      return 0;
+    }
+  }, [jobs, payments, readStateVersion]);
+
+  const displayBadge = unreadCount > 99 ? '99+' : unreadCount > 0 ? String(unreadCount) : null;
 
   const handleLogout = async () => {
     await logout();
@@ -62,7 +101,9 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 py-5">
-        {menuItems.map((item) => (
+        {menuItems.map((item) => {
+          const badgeText = item.path === '/bildirimler' ? displayBadge : item.badge;
+          return (
           <div
             key={item.path}
             onClick={() => navigate(item.path)}
@@ -73,8 +114,10 @@ export default function Sidebar() {
           >
             <span className="text-lg">•</span>
             <span>{item.label}</span>
+            {badgeText && <span className="ml-auto rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black text-white">{badgeText}</span>}
           </div>
-        ))}
+          );
+        })}
       </nav>
       <div className="p-5 border-t border-[var(--border-soft)]">
         <div

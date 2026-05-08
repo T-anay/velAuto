@@ -20,14 +20,11 @@ public class Staff {
   private Integer id;
 
   @OneToOne
-  @JoinColumn(name = "user_id", referencedColumnName = "id")
+  @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = true)
   private User user;
 
   @Column(name = "full_name", nullable = false, length = 100)
   private String fullName;
-
-  @Column(nullable = false, length = 50)
-  private String title;
 
   @Column(unique = true, length = 20)
   private String phone;

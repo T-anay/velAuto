@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -36,6 +37,29 @@ public class GlobalExceptionHandler {
   }
 
   // 2. DTO VALIDASYON HATALARINI NOKTA ATIŞI YAKALAMAK İÇİN YENİ EKLENDİ
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatchException(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    System.err.println("--- TYPE MISMATCH HATASI YAKALANDI ---");
+    ex.printStackTrace();
+
+    String errorMessage;
+    if ("undefined".equals(ex.getValue())) {
+      errorMessage = "Personel ID'si boş veya tanımsız. Lütfen geçerli bir personel seçin.";
+    } else {
+      errorMessage = String.format("'%s' değeri '%s' tipine dönüştürülemedi. Beklenen tip: %s", 
+          ex.getName(), ex.getValue(), ex.getRequiredType().getSimpleName());
+    }
+
+    ErrorResponse error = new ErrorResponse(
+            LocalDateTime.now(),
+            HttpStatus.BAD_REQUEST.value(),
+            "Parametre Tip Hatası",
+            errorMessage,
+            request.getRequestURI()
+    );
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
     System.err.println("--- VALIDASYON HATASI YAKALANDI ---");

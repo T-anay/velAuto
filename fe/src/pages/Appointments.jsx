@@ -2,11 +2,23 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useService } from '../context/ServiceContext';
 import PlateInput from '../components/PlateInput';
+import CustomerSearch from '../components/CustomerSearch';
 import { carBrands } from '../constants/carData'; // DİKKAT: Bu importun yolu projenizle eşleşmeli
+import { validatePlate } from '../constants/plateFormats';
 
 export default function Appointments() {
     const navigate = useNavigate();
-    const { appointments, approveAppointment, addAppointment, deleteAppointment, isValidTurkishPlate } = useService();
+    const { appointments, approveAppointment, addAppointment, deleteAppointment, customers, addJob, setAppointmentOverride, getAppointmentStatus } = useService();
+
+    const handleCustomerSelect = (selected) => {
+        if (!selected) return;
+        setFormValues(prev => ({
+            ...prev,
+            customer: selected.fullName || selected.name || '',
+            phone: String(selected.phone || '').replace(/\D/g, '').slice(-10),
+            plate: selected.plate || prev.plate,
+        }));
+    };
 
     const formatDateTimeLocal = (date = new Date()) => {
         const value = new Date(date);
@@ -16,7 +28,7 @@ export default function Appointments() {
 
     // State'e brand ve model eklendi
     const [formValues, setFormValues] = useState({
-        province: '34', letters: '', digits: '', 
+        plateCountry: 'TR', plate: '', 
         customer: '', phone: '', service: '', 
         brand: '', model: '', // YENİ
         time: formatDateTimeLocal()
@@ -37,8 +49,6 @@ export default function Appointments() {
         return cleaned;
     };
 
-    const buildPlate = () => `${formValues.province} ${formValues.letters.toUpperCase()} ${formValues.digits}`;
-
     const formatDateTime = (dateTimeString) => {
         try {
             const date = new Date(dateTimeString);
@@ -53,7 +63,7 @@ export default function Appointments() {
 
         if (!formValues.customer.trim()) errors.push('customer');
         if (!formValues.phone.trim() || formValues.phone.length < 10) errors.push('phone');
-        if (!formValues.letters || !formValues.digits) errors.push('plate');
+        if (!formValues.plate) errors.push('plate');
         if (!formValues.service.trim()) errors.push('service');
         if (!formValues.time) errors.push('time');
 
@@ -82,8 +92,8 @@ export default function Appointments() {
             return;
         }
 
-        const plate = buildPlate();
-        if (!isValidTurkishPlate(plate)) {
+        const plate = formValues.plate;
+        if (!validatePlate(plate, formValues.plateCountry)) {
             setErrorFields(['plate']);
             setError('Plaka formati hatali.');
             return;
@@ -103,7 +113,7 @@ export default function Appointments() {
 
             // Formu sıfırla
             setFormValues({ 
-                province: '34', letters: '', digits: '', 
+                plateCountry: 'TR', plate: '', 
                 customer: '', phone: '', service: '', 
                 brand: '', model: '',
                 time: formatDateTimeLocal() 
@@ -121,6 +131,26 @@ export default function Appointments() {
         if (deleteModal.id) {
             deleteAppointment(deleteModal.id);
             setDeleteModal({ isOpen: false, id: null, plate: '' });
+        }
+    };
+
+    const handleOpenJobOrder = async (app) => {
+        try {
+            await addJob({
+                plate: app.plate,
+                customer: app.customer,
+                phone: app.phone,
+                brand: app.brand || '',
+                model: app.model || '',
+                complaint: app.service || 'Belirtilmedi',
+                total: 0,
+                status: 'IN_PROGRESS'
+            });
+            await setAppointmentOverride(app.id, 'CONVERTED');
+            navigate('/active-jobs');
+        } catch (err) {
+            console.error("Job order creation failed:", err);
+            setError("İş emri oluşturulamadı: " + (err.message || "Bilinmeyen hata"));
         }
     };
 
@@ -142,6 +172,10 @@ export default function Appointments() {
                         <h3 className="text-[var(--accent)] font-bold text-lg flex items-center gap-2 border-b border-[var(--border-strong)]/30 pb-3">
                             <span className="bg-[var(--accent)]/10 px-3 py-1 rounded-lg text-sm font-black">1</span> Musteri ve Arac Bilgileri
                         </h3>
+                        <div className="mb-4">
+                            <label className="text-[10px] text-gray-500 font-bold uppercase ml-1 tracking-wider font-sans block mb-1">Kayıtlı Müşteri Ara</label>
+                            <CustomerSearch customers={customers} onSelect={handleCustomerSelect} />
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-1">
                                 <label className="text-[10px] text-gray-500 font-bold uppercase ml-1 tracking-wider font-sans">Musteri Ad Soyad *</label>
@@ -155,7 +189,7 @@ export default function Appointments() {
                                 </div>
                             </div>
                         </div>
-                        <PlateInput province={formValues.province} letters={formValues.letters} digits={formValues.digits} onChange={(field, val) => setFormValues(prev => ({ ...prev, [field]: val }))} error={errorFields.includes('plate')} />
+                        <PlateInput country={formValues.plateCountry} value={formValues.plate} onCountryChange={(plateCountry) => setFormValues(prev => ({ ...prev, plateCountry }))} onChange={(plate) => setFormValues(prev => ({ ...prev, plate }))} error={errorFields.includes('plate')} />
 
                         {/* YENİ: Marka Model Seçimi */}
                         <div>
@@ -228,7 +262,13 @@ export default function Appointments() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {appointments.length > 0 ? appointments.map((app) => (
+                {appointments
+                    .map(app => ({ ...app, _status: getAppointmentStatus(app).status }))
+                    .filter(app => app._status !== 'CONVERTED')
+                    .length > 0 ? appointments
+                        .map(app => ({ ...app, _status: getAppointmentStatus(app).status }))
+                        .filter(app => app._status !== 'CONVERTED')
+                        .map((app) => (
                     <div key={app.id} className={`group p-5 rounded-2xl bg-[var(--bg-card)] border-l-8 transition-all hover:scale-[1.02] shadow-xl ${app.type === 'green' ? 'border-[var(--success)]' : 'border-[var(--danger)]'}`}>
                         <div className="flex justify-between items-start mb-3">
                             <div>
@@ -246,7 +286,7 @@ export default function Appointments() {
                             {app.status === 'ONAY BEKLİYOR' ? (
                                 <button onClick={() => approveAppointment(app.id)} className="flex-1 py-2 bg-[var(--accent)] text-white font-black rounded-lg hover:brightness-110 transition-all text-xs uppercase tracking-widest shadow-md">ONAYLA</button>
                             ) : (
-                                <button onClick={() => { deleteAppointment(app.id); navigate('/vehicle-entry', { state: { plate: app.plate, licensePlate: app.plate, service: app.service, customer: app.customer, phone: app.phone, brand: app.brand || '', model: app.model || '' } }); }} className="flex-1 py-2 bg-[var(--border-strong)] text-[var(--text-primary)] font-black rounded-lg hover:bg-[var(--accent)] hover:text-white transition-all text-xs uppercase tracking-widest shadow-md">IS EMRI AC</button>
+                                <button onClick={() => handleOpenJobOrder(app)} className="flex-1 py-2 bg-[var(--border-strong)] text-[var(--text-primary)] font-black rounded-lg hover:bg-[var(--accent)] hover:text-white transition-all text-xs uppercase tracking-widest shadow-md">IS EMRI AC</button>
                             )}
                             <button onClick={() => setDeleteModal({ isOpen: true, id: app.id, plate: app.plate })} className="px-4 py-2 bg-transparent border border-[var(--danger)]/50 text-[var(--danger)] font-black rounded-lg hover:bg-[var(--danger)] hover:text-[var(--text-primary)] transition-all text-xs uppercase tracking-widest">SIL</button>
                         </div>

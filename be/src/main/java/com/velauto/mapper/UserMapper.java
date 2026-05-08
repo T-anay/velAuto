@@ -59,7 +59,7 @@ public interface UserMapper {
 
   /**
    * StaffCreateDto'ten Staff User oluşturur
-   * StaffCreateDto: fullName, phone, email, password, title
+   * StaffCreateDto: fullName, phone, email, password
    * @param request StaffCreateDto DTO
    * @param encodedPassword Şifrelenmiş şifre
    * @param createdBy Oluşturan kullanıcı ID

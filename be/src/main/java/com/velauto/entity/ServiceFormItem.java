@@ -1,5 +1,6 @@
 package com.velauto.entity;
 
+import com.velauto.entity.enums.ServiceFormItemStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,6 +46,10 @@ public class ServiceFormItem {
   @Column(name = "line_total", nullable = false, columnDefinition = "DECIMAL(10, 2)")
   private BigDecimal lineTotal;
 
+  @Builder.Default
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false)
+  private ServiceFormItemStatus status = ServiceFormItemStatus.BEKLIYOR;
 
   @Column(name = "created_by")
   private Integer createdBy;

@@ -1,6 +1,5 @@
 package com.velauto.dto;
 
-import com.velauto.validation.ValidPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -16,24 +15,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class StaffCreateDto {
 
-  @NotBlank(message = "E-posta adresi boş bırakılamaz")
-  @Email(message = "Geçerli bir e-posta adresi giriniz")
+  @NotBlank(message = "E-posta adresi bos birakilamaz")
+  @Email(message = "Gecerli bir e-posta adresi giriniz")
   private String email;
 
-  @NotBlank(message = "Şifre boş bırakılamaz")
-  @ValidPassword
   private String password;
 
-  @NotBlank(message = "Ad soyad boş bırakılamaz")
-  @Size(min = 2, max = 100, message = "Ad soyad 2-100 karakter arasında olmalıdır")
+  private String role;
+
+  @NotBlank(message = "Ad soyad bos birakilamaz")
+  @Size(min = 2, max = 100, message = "Ad soyad 2-100 karakter arasinda olmalidir")
   private String fullName;
 
-  @NotBlank(message = "Ünvan boş bırakılamaz")
-  @Size(min = 2, max = 50, message = "Ünvan 2-50 karakter arasında olmalıdır")
-  private String title;
-
-  @Pattern(regexp = "^[0-9]{10}$", message = "Telefon numarası 10 haneli olmalıdır")
+  @Pattern(regexp = "^[0-9+]{10,20}$", message = "Telefon numarasi 10-20 haneli olmalidir")
   private String phone;
 }
-
-

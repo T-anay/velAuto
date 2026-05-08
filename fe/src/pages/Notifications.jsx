@@ -20,6 +20,7 @@ export default function Notifications() {
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(readState));
+    window.dispatchEvent(new Event('velauto_notifications_updated'));
   }, [readState]);
 
   const generatedNotifications = useMemo(() => {

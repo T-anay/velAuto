@@ -1,7 +1,7 @@
 -- liquibase formatted sql
 
 -- changeset talha:2.1
--- Add tenant and audit fields to users table
+-- Add audit fields to users table
 ALTER TABLE users
   ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1,
   ADD COLUMN created_by INT DEFAULT NULL,

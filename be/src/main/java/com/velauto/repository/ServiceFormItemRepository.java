@@ -1,6 +1,7 @@
 package com.velauto.repository;
 
 import com.velauto.entity.ServiceFormItem;
+import com.velauto.entity.enums.ServiceFormItemStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,5 +33,11 @@ public interface ServiceFormItemRepository extends JpaRepository<ServiceFormItem
 
   @Query("SELECT COUNT(sfi) FROM ServiceFormItem sfi WHERE sfi.deletedAt IS NULL")
   long countByDeletedAtIsNull();
+
+  @Query("SELECT CASE WHEN COUNT(sfi) > 0 THEN true ELSE false END FROM ServiceFormItem sfi WHERE sfi.serviceFormId = :serviceFormId AND sfi.deletedAt IS NULL AND sfi.status <> :status")
+  boolean existsByServiceFormIdAndStatusNot(
+      @Param("serviceFormId") Integer serviceFormId,
+      @Param("status") ServiceFormItemStatus status
+  );
 }
 

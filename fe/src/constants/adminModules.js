@@ -248,6 +248,5 @@ export const adminModuleList = [
   adminModules.appointments,
   adminModules.ai,
   adminModules.audits,
-  adminModules.notifications,
   adminModules.invoices,
 ];

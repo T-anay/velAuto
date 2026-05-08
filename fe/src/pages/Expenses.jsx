@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useService } from '../context/ServiceContext';
 import { pushToast } from '../lib/toastBus';
+import BackButton from '../components/BackButton';
 
 const STORAGE_KEY = 'velauto_expenses_v1';
 const CATEGORIES = ['KIRA', 'ELEKTRIK', 'SU', 'YEDEK_PARCA', 'PERSONEL_MAASI', 'BAKIM', 'DIGER'];
@@ -90,6 +91,7 @@ export default function Expenses() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+      <BackButton />
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
         <div>
           <p className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-muted)] font-black">Muhasebe</p>

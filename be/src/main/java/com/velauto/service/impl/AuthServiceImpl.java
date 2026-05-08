@@ -10,6 +10,7 @@ import com.velauto.dto.RefreshTokenDto;
 import com.velauto.dto.RegisterDto;
 import com.velauto.dto.ResetPasswordDto;
 import com.velauto.dto.StaffCreateDto;
+import com.velauto.dto.StaffResponseDto;
 import com.velauto.entity.Customer;
 import com.velauto.entity.PasswordResetToken;
 import com.velauto.entity.RefreshToken;
@@ -30,6 +31,7 @@ import com.velauto.security.JwtUtils;
 import com.velauto.service.AuditLogService;
 import com.velauto.service.AuthService;
 import com.velauto.service.RefreshTokenService;
+import com.velauto.service.StaffService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -59,6 +61,7 @@ public class AuthServiceImpl implements AuthService {
   private final JwtUtils jwtUtils;
   private final RefreshTokenService refreshTokenService;
   private final AuditLogService auditLogService;
+  private final StaffService staffService;
   private final AuthenticationManager authenticationManager;
 
   private final UserMapper userMapper;
@@ -190,24 +193,16 @@ public class AuthServiceImpl implements AuthService {
   @Override
   @Transactional
   public AuthResponseDto createStaff(StaffCreateDto request, Integer currentUserId) {
-    User currentUser = findActiveUserById(currentUserId);
-    validateUserHasRole(currentUser, Role.ADMIN, Role.SUPER_ADMIN); // DÜZELTİLDİ
-
-    String email = request.getEmail();
-    validateEmailNotExists(email);
-
-    String encodedPassword = passwordEncoder.encode(request.getPassword());
-
-    User staffUser = userMapper.toStaffUser(request, encodedPassword, currentUserId);
-    User savedStaffUser = userRepository.save(staffUser);
-
-    Staff staff = staffMapper.toStaff(request, savedStaffUser);
-    staffRepository.save(staff);
-
-    AuthResponseDto response = createAuthResponse(savedStaffUser);
-    String auditDetails = "Staff created: " + request.getFullName();
-    auditLogService.log(currentUserId, "STAFF_CREATED", "USER", savedStaffUser.getId(), auditDetails);
-
+    StaffResponseDto staffResponse = staffService.createStaff(request, currentUserId);
+    
+    // Convert StaffResponseDto to AuthResponseDto
+    AuthResponseDto response = new AuthResponseDto();
+    response.setUserId(staffResponse.getId());
+    response.setEmail(null);
+    response.setRole(null);
+    response.setAccessToken(null);
+    response.setRefreshToken(null);
+    
     return response;
   }
 

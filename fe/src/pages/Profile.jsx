@@ -112,7 +112,7 @@ export default function Profile() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <section className="xl:col-span-1 bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
           <p className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-muted)] font-black">Kullanıcı Profili</p>
-          <h1 className="text-3xl font-black text-[var(--text-primary)] mt-2">{fullName}</h1>
+          <h1 className="text-2xl font-black text-[var(--text-primary)] mt-2">{fullName}</h1>
           <p className="text-sm text-[var(--text-secondary)] mt-2">Rol: <span className="font-bold">{role}</span></p>
           <p className="text-sm text-[var(--text-secondary)]">Şube: <span className="font-bold">{tenantName}</span></p>
 
@@ -169,7 +169,7 @@ export default function Profile() {
         </section>
 
         <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-           {passwordMessage && <p className="text-sm font-bold text-[var(--success)] mt-3">{passwordMessage}</p>}
+          {passwordMessage && <p className="text-sm font-bold text-[var(--success)] mt-3">{passwordMessage}</p>}
           <button
             type="button"
             onClick={() => {

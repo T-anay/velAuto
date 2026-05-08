@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useService } from '../context/ServiceContext';
 import { pushToast } from '../lib/toastBus';
+import BackButton from '../components/BackButton';
 
 export default function Kasa() {
     const navigate = useNavigate();
@@ -52,6 +53,7 @@ export default function Kasa() {
 
     return (
         <div className="animate-in fade-in duration-500">
+            <BackButton />
             <h1 className="text-3xl font-black mb-8 tracking-tight">Kasa & Tahsilat Paneli</h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

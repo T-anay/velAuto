@@ -3,6 +3,7 @@ package com.velauto.controller;
 import com.velauto.dto.ServiceFormCreateDto;
 import com.velauto.dto.ServiceFormResponseDto;
 import com.velauto.dto.ServiceFormUpdateDto;
+import com.velauto.dto.AssignStaffDto;
 import com.velauto.security.CustomUserDetails;
 import com.velauto.service.ServiceFormService;
 import jakarta.validation.Valid;
@@ -123,6 +124,31 @@ public class ServiceFormController {
         userDetails.getUserId()
     );
     return ResponseEntity.ok(response);
+  }
+
+  @PatchMapping("/{id}/assign-staff")
+  @PreAuthorize("hasAnyRole('admin', 'manager', 'staff')")
+  public ResponseEntity<ServiceFormResponseDto> assignStaff(
+      @PathVariable Integer id,
+      @Valid @RequestBody AssignStaffDto request,
+      @AuthenticationPrincipal CustomUserDetails userDetails
+  ) {
+    ServiceFormResponseDto response = serviceFormService.assignStaff(
+        id,
+        request.getStaffId(),
+        userDetails.getUserId()
+    );
+    return ResponseEntity.ok(response);
+  }
+
+  @PatchMapping("/{id}/complete")
+  @PreAuthorize("hasAnyRole('admin', 'manager', 'staff')")
+  public ResponseEntity<Void> completeServiceForm(
+      @PathVariable Integer id,
+      @AuthenticationPrincipal CustomUserDetails userDetails
+  ) {
+    serviceFormService.completeServiceForm(id, userDetails.getUserId());
+    return ResponseEntity.noContent().build();
   }
 
   @DeleteMapping("/{id}")

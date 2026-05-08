@@ -53,4 +53,10 @@ public interface ServiceFormService {
       Integer serviceFormId,
       Integer userId
   );
+
+  ServiceFormResponseDto assignStaff(
+      Integer serviceFormId,
+      Integer staffId,
+      Integer userId
+  );
 }

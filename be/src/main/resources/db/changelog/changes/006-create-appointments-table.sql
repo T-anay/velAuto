@@ -1,7 +1,7 @@
 -- liquibase formatted sql
 
 -- changeset talha:6.1 failOnError:true
--- Create appointments table with multi-tenant and soft delete support
+-- Create appointments table with soft delete support
 CREATE TABLE IF NOT EXISTS appointments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   customer_id INT NOT NULL,
@@ -9,7 +9,6 @@ CREATE TABLE IF NOT EXISTS appointments (
   appointment_date DATETIME NOT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
   notes TEXT,
-  tenant_id INT NOT NULL,
   created_by INT,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_by INT,
@@ -18,11 +17,9 @@ CREATE TABLE IF NOT EXISTS appointments (
   deleted_by INT,
   CONSTRAINT appointments_fk_customer FOREIGN KEY (customer_id) REFERENCES customers (id),
   CONSTRAINT appointments_fk_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicles (id),
-  CONSTRAINT appointments_fk_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id) ON DELETE CASCADE,
   CONSTRAINT appointments_fk_created_by FOREIGN KEY (created_by) REFERENCES users (id),
   CONSTRAINT appointments_fk_updated_by FOREIGN KEY (updated_by) REFERENCES users (id),
   CONSTRAINT appointments_fk_deleted_by FOREIGN KEY (deleted_by) REFERENCES users (id),
-  INDEX idx_appointments_tenant_id (tenant_id),
   INDEX idx_appointments_customer_id (customer_id),
   INDEX idx_appointments_vehicle_id (vehicle_id),
   INDEX idx_appointments_date (appointment_date),

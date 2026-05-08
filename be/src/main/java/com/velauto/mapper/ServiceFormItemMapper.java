@@ -14,6 +14,7 @@ public interface ServiceFormItemMapper {
   @Mapping(target = "unitPrice", ignore = true)
   @Mapping(target = "taxRate", ignore = true)
   @Mapping(target = "lineTotal", ignore = true)
+  @Mapping(target = "status", expression = "java(dto.getStatus() != null ? dto.getStatus() : com.velauto.entity.enums.ServiceFormItemStatus.BEKLIYOR)")
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
   @Mapping(target = "updatedBy", ignore = true)

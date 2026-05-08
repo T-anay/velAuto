@@ -7,12 +7,17 @@ import com.velauto.dto.ServiceFormUpdateDto;
 import com.velauto.entity.Appointment;
 import com.velauto.entity.Customer;
 import com.velauto.entity.ServiceForm;
+import com.velauto.entity.Staff;
 import com.velauto.entity.Vehicle;
+import com.velauto.entity.enums.ServiceFormItemStatus;
+import com.velauto.entity.enums.ServiceFormStatus;
 import com.velauto.exception.BusinessException;
 import com.velauto.mapper.ServiceFormMapper;
 import com.velauto.repository.AppointmentRepository;
 import com.velauto.repository.CustomerRepository;
+import com.velauto.repository.ServiceFormItemRepository;
 import com.velauto.repository.ServiceFormRepository;
+import com.velauto.repository.StaffRepository;
 import com.velauto.repository.VehicleRepository;
 import com.velauto.service.AuditLogService;
 import com.velauto.service.ServiceFormService;
@@ -34,6 +39,8 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   private final CustomerRepository customerRepository;
   private final VehicleRepository vehicleRepository;
   private final AppointmentRepository appointmentRepository;
+  private final ServiceFormItemRepository serviceFormItemRepository;
+  private final StaffRepository staffRepository;
   private final ServiceFormMapper serviceFormMapper;
   private final AuditLogService auditLogService;
 
@@ -312,7 +319,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
 
     ServiceForm serviceForm = serviceFormOptional.get();
 
-    if (serviceForm.getStatus() == com.velauto.entity.enums.ServiceFormStatus.COMPLETED) {
+    if (serviceForm.getStatus() == ServiceFormStatus.COMPLETED) {
       throw new BusinessException("Servis formu zaten kapatildi", org.springframework.http.HttpStatus.CONFLICT);
     }
 
@@ -320,7 +327,16 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.SERVICE_FORM_DELETED);
     }
 
-    serviceForm.setStatus(com.velauto.entity.enums.ServiceFormStatus.COMPLETED);
+    boolean hasIncompleteItems = serviceFormItemRepository.existsByServiceFormIdAndStatusNot(
+        serviceFormId,
+        ServiceFormItemStatus.TAMAMLANDI
+    );
+    if (hasIncompleteItems) {
+      throw new BusinessException("Tum is kalemleri tamamlanmadan is emri kapatilamaz",
+          org.springframework.http.HttpStatus.CONFLICT);
+    }
+
+    serviceForm.setStatus(ServiceFormStatus.COMPLETED);
     serviceForm.setUpdatedBy(userId);
     serviceForm.setUpdatedAt(LocalDateTime.now());
 
@@ -333,5 +349,41 @@ public class ServiceFormServiceImpl implements ServiceFormService {
             serviceForm.getTotalTax()
     );
     auditLogService.log(userId, "SERVICE_FORM_COMPLETED", "SERVICE_FORM", serviceFormId, auditDetails);
+  }
+
+  @Override
+  @Transactional
+  public ServiceFormResponseDto assignStaff(Integer serviceFormId, Integer staffId, Integer userId) {
+    if (serviceFormId == null) {
+      throw new BusinessException(Messages.INVALID_REQUEST);
+    }
+
+    ServiceForm serviceForm = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId)
+        .orElseThrow(() -> new BusinessException(Messages.SERVICE_FORM_NOT_FOUND));
+
+    if (serviceForm.getIsLocked() != null && serviceForm.getIsLocked()) {
+      throw new BusinessException(Messages.SERVICE_FORM_LOCKED);
+    }
+    if (serviceForm.getStatus() == ServiceFormStatus.COMPLETED) {
+      throw new BusinessException(Messages.SERVICE_FORM_COMPLETED);
+    }
+
+    if (staffId != null) {
+      Staff staff = staffRepository.findById(staffId)
+          .orElseThrow(() -> new BusinessException("Staff bulunamadi", org.springframework.http.HttpStatus.NOT_FOUND));
+      if (staff.getDeletedAt() != null || staff.getUser() == null || !staff.getUser().isActive()) {
+        throw new BusinessException("Aktif staff bulunamadi", org.springframework.http.HttpStatus.NOT_FOUND);
+      }
+    }
+
+    serviceForm.setAssignedStaffId(staffId);
+    serviceForm.setUpdatedBy(userId);
+    serviceForm.setUpdatedAt(LocalDateTime.now());
+
+    ServiceForm savedForm = serviceFormRepository.save(serviceForm);
+    auditLogService.log(userId, "SERVICE_FORM_STAFF_ASSIGNED", "SERVICE_FORM", serviceFormId,
+        "Assigned staff: " + staffId);
+
+    return serviceFormMapper.toServiceFormResponseDto(savedForm);
   }
 }

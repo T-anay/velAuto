@@ -2,6 +2,7 @@ package com.velauto.service;
 
 import com.velauto.dto.ServiceFormItemCreateDto;
 import com.velauto.dto.ServiceFormItemResponseDto;
+import com.velauto.entity.enums.ServiceFormItemStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -19,6 +20,12 @@ public interface ServiceFormItemService {
   Page<ServiceFormItemResponseDto> getItemsByServiceForm(
       Integer serviceFormId,
       Pageable pageable
+  );
+
+  ServiceFormItemResponseDto updateItemStatus(
+      Integer itemId,
+      ServiceFormItemStatus status,
+      Integer userId
   );
 
   void deleteItem(

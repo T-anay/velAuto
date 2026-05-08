@@ -26,6 +26,7 @@ const CACHE_KEYS = {
   appointments: 'velauto_appointments_cache',
   payments: 'velauto_pending_payments_cache',
   serviceCatalog: 'velauto_service_catalog_cache',
+  appointmentOverrides: 'velauto_admin_appointment_status_v1',
 };
 
 const loadJsonArray = (keys, fallback = []) => {
@@ -153,6 +154,7 @@ export const ServiceProvider = ({ children }) => {
   const [appointments, setAppointments] = useState(() => loadJsonArray([CACHE_KEYS.appointments, 'velauto_appointments'], []));
   const [payments, setPayments] = useState(() => loadJsonArray([CACHE_KEYS.payments, 'velauto_payments'], []));
   const [serviceCatalog, setServiceCatalog] = useState(() => loadJsonArray([CACHE_KEYS.serviceCatalog], []));
+  const [appointmentOverrides, setAppointmentOverrides] = useState(() => loadJsonValue([CACHE_KEYS.appointmentOverrides], {}));
   const [isBootstrapping, setIsBootstrapping] = useState(Boolean(savedTokens.accessToken || savedTokens.refreshToken));
   const [error, setError] = useState('');
   const [isLoadingJob, setIsLoadingJob] = useState(false);
@@ -164,6 +166,7 @@ export const ServiceProvider = ({ children }) => {
   useEffect(() => saveJson(CACHE_KEYS.appointments, appointments), [appointments]);
   useEffect(() => saveJson(CACHE_KEYS.payments, payments), [payments]);
   useEffect(() => saveJson(CACHE_KEYS.serviceCatalog, serviceCatalog), [serviceCatalog]);
+  useEffect(() => saveJson(CACHE_KEYS.appointmentOverrides, appointmentOverrides), [appointmentOverrides]);
 
   // Normalize any cached jobs/appointments on mount so older caches still have status metadata
   useEffect(() => {
@@ -233,6 +236,8 @@ export const ServiceProvider = ({ children }) => {
       const normalizedServiceFormsRaw = extractCollection(serviceFormsResponse);
       const normalizedCatalog = extractCollection(catalogResponse).map(normalizeServiceCatalogItem);
 
+      normalizedCustomers.forEach(customer => { if (!customer.plate) { const customerVehicle = normalizedVehicles.find(v => String(v.customerId) === String(customer.id) || String(v.customer?.id) === String(customer.id)); if (customerVehicle && customerVehicle.plate) { customer.plate = customerVehicle.plate; } } });
+
       const customerLookup = new Map(normalizedCustomers.map((customer) => [String(customer.id), customer]));
       const vehicleLookup = new Map(normalizedVehicles.map((vehicle) => [String(vehicle.id), vehicle]));
 
@@ -300,7 +305,10 @@ export const ServiceProvider = ({ children }) => {
   const ensureCustomer = useCallback(async ({ fullName, phone, plate, email, address, notes }) => {
     const normalizedPlate = normalizePlate(plate);
     const normalizedPhone = normalizePhoneForBackend(phone);
-    const existingCustomer = customers.find((customer) => normalizePlate(customer.plate) === normalizedPlate || normalizeText(customer.phone) === normalizeText(phone));
+    const existingCustomer = customers.find((customer) => 
+      (normalizedPlate && normalizePlate(customer.plate) === normalizedPlate) || 
+      (normalizeText(phone) && normalizeText(customer.phone) === normalizeText(phone))
+    );
     if (existingCustomer) {
       return existingCustomer;
     }
@@ -398,8 +406,8 @@ export const ServiceProvider = ({ children }) => {
   }, []);
 
   const addCustomer = useCallback(async (newCustomer) => {
-    if (!normalizeText(newCustomer?.name, newCustomer?.fullName) || !normalizeText(newCustomer?.phone) || !normalizeText(newCustomer?.plate)) {
-      throw new Error('Müşteri adı, telefon ve plaka zorunludur.');
+    if (!normalizeText(newCustomer?.name, newCustomer?.fullName) || !normalizeText(newCustomer?.phone)) {
+      throw new Error('Müşteri adı ve telefon zorunludur.');
     }
 
     const customer = await ensureCustomer({
@@ -571,6 +579,25 @@ export const ServiceProvider = ({ children }) => {
     setAppointments((prev) => prev.filter((appointment) => String(appointment.id) !== String(id)));
     return { success: true };
   }, []);
+
+  const setAppointmentOverride = useCallback((id, status) => {
+    setAppointmentOverrides((prev) => ({
+      ...prev,
+      [id]: {
+        status,
+        at: status === 'CONVERTED' ? new Date().toISOString() : null,
+      },
+    }));
+  }, []);
+
+  const getAppointmentStatus = useCallback((appointment) => {
+    const override = appointmentOverrides[appointment.id];
+    if (override) return override;
+    return {
+      status: appointment.status === 'ONAYLI' ? 'APPROVED' : 'PENDING',
+      at: null,
+    };
+  }, [appointmentOverrides]);
 
   const addJob = useCallback(async (newJob) => {
     if (isLoadingJob) {
@@ -837,6 +864,7 @@ export const ServiceProvider = ({ children }) => {
     appointments,
     payments,
     serviceCatalog,
+    appointmentOverrides,
     addJob,
     deleteJob,
     updateJob,
@@ -850,6 +878,8 @@ export const ServiceProvider = ({ children }) => {
     addAppointment,
     approveAppointment,
     deleteAppointment,
+    setAppointmentOverride,
+    getAppointmentStatus,
     processPayment,
     updateUserProfile,
     changeUserPassword,
@@ -861,6 +891,7 @@ export const ServiceProvider = ({ children }) => {
     addServiceItem,
     approveAppointment,
     appointments,
+    appointmentOverrides,
     completeJob,
     customers,
     deleteAppointment,
@@ -885,6 +916,8 @@ export const ServiceProvider = ({ children }) => {
     updateJob,
     user,
     vehicles,
+    setAppointmentOverride,
+    getAppointmentStatus,
   ]);
 
   return (

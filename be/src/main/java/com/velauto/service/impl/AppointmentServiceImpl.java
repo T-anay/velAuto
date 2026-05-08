@@ -5,14 +5,18 @@ import com.velauto.dto.AppointmentCreateDto;
 import com.velauto.dto.AppointmentResponseDto;
 import com.velauto.dto.AppointmentUpdateDto;
 import com.velauto.entity.Appointment;
+import com.velauto.entity.Brand;
 import com.velauto.entity.Customer;
 import com.velauto.entity.User;
 import com.velauto.entity.Vehicle;
+import com.velauto.entity.VehicleModel;
 import com.velauto.exception.BusinessException;
 import com.velauto.mapper.AppointmentMapper;
 import com.velauto.repository.AppointmentRepository;
+import com.velauto.repository.BrandRepository;
 import com.velauto.repository.CustomerRepository;
 import com.velauto.repository.UserRepository;
+import com.velauto.repository.VehicleModelRepository;
 import com.velauto.repository.VehicleRepository;
 import com.velauto.service.AppointmentService;
 import com.velauto.service.AuditLogService;
@@ -45,6 +49,8 @@ public class AppointmentServiceImpl implements AppointmentService {
   private final AppointmentMapper appointmentMapper;
   private final AuditLogService auditLogService;
   private final UserRepository userRepository;
+  private final BrandRepository brandRepository;
+  private final VehicleModelRepository vehicleModelRepository;
   private final PasswordEncoder passwordEncoder;
   private final FileStorageService fileStorageService;
   private final NotificationService notificationService;
@@ -366,6 +372,10 @@ public class AppointmentServiceImpl implements AppointmentService {
       vehicle = new Vehicle();
       vehicle.setCustomer(customer);
       vehicle.setLicensePlate(normalizedPlate);
+      Brand brand = findOrCreateBrand(request.getBrand());
+      VehicleModel model = findOrCreateModel(request.getModel(), brand);
+      vehicle.setBrand(brand);
+      vehicle.setVehicleModel(model);
       vehicle.setCreatedAt(LocalDateTime.now());
       vehicle = vehicleRepository.save(vehicle);
     }
@@ -395,7 +405,9 @@ public class AppointmentServiceImpl implements AppointmentService {
     Appointment appointment = Appointment.builder()
             .customerId(customer.getId())
             .vehicleId(vehicle.getId())
+            .appointmentDate(LocalDateTime.now().plusDays(1))
             .status(com.velauto.entity.enums.AppointmentStatus.PENDING)
+            .notes(XssUtils.sanitize(request.getComplaint()))
             .createdAt(LocalDateTime.now())
             .build();
 
@@ -457,6 +469,28 @@ public class AppointmentServiceImpl implements AppointmentService {
     newCustomer.setCreatedAt(LocalDateTime.now());
 
     return customerRepository.save(newCustomer);
+  }
+
+  private Brand findOrCreateBrand(String brandName) {
+    String normalizedName = XssUtils.sanitize(brandName == null ? "Bilinmeyen" : brandName.trim());
+    return brandRepository.findByName(normalizedName)
+        .orElseGet(() -> {
+          Brand brand = new Brand();
+          brand.setName(normalizedName);
+          return brandRepository.save(brand);
+        });
+  }
+
+  private VehicleModel findOrCreateModel(String modelName, Brand brand) {
+    String normalizedName = XssUtils.sanitize(modelName == null ? "Bilinmeyen" : modelName.trim());
+    return vehicleModelRepository.findByName(normalizedName)
+        .filter(existingModel -> existingModel.getBrand() != null && existingModel.getBrand().getId().equals(brand.getId()))
+        .orElseGet(() -> {
+          VehicleModel model = new VehicleModel();
+          model.setName(normalizedName);
+          model.setBrand(brand);
+          return vehicleModelRepository.save(model);
+        });
   }
 
   private String generateSecurePassword() {

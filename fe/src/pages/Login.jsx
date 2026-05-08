@@ -1,5 +1,5 @@
 import { setStoredTokens } from '../api/velautoApi';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useService } from '../context/ServiceContext';
 import { useTheme } from '../context/ThemeContext';
@@ -103,6 +103,12 @@ export default function Login() {
                     >
                         {isSubmitting ? 'GİRİŞ YAPILIYOR...' : 'SİSTEME GİRİŞ YAP'}
                     </button>
+                    <Link
+                        to="/public-appointment"
+                        className="block w-full rounded-xl border border-[var(--accent)]/40 p-4 text-center text-sm font-black uppercase tracking-[0.16em] text-[var(--accent)] transition-all hover:bg-[var(--accent)]/10"
+                    >
+                        Yeni Arac Kabul Formu
+                    </Link>
                 </div>
             </form>
         </div>
