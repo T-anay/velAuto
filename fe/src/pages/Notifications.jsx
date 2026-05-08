@@ -17,6 +17,7 @@ export default function Notifications() {
   const { jobs, payments } = useService();
   const [readState, setReadState] = useState(loadReadState);
   const [filter, setFilter] = useState('ALL');
+  const [baseTime] = useState(() => Date.now());
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(readState));
@@ -50,10 +51,10 @@ export default function Notifications() {
 
     return [...lowStockSeeds, ...completedJobs, ...paymentUpdates].map((item, index) => ({
       ...item,
-      createdAt: new Date(Date.now() - index * 1000 * 60 * 20).toISOString(),
+      createdAt: new Date(baseTime - index * 1000 * 60 * 20).toISOString(),
       read: Boolean(readState[item.id]),
     }));
-  }, [jobs, payments, readState]);
+  }, [baseTime, jobs, payments, readState]);
 
   const filteredNotifications = useMemo(() => {
     return generatedNotifications.filter((item) => (filter === 'ALL' ? true : item.type === filter));

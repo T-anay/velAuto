@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import BackButton from '../components/BackButton';
 import { damagePrices, aiCatalogCategories } from '../constants/damageCatalogMap';
 import { brandTiers } from '../constants/brandTiers';
@@ -27,12 +27,14 @@ export default function AISettings() {
   const [isAddingNewBrand, setIsAddingNewBrand] = useState(false);
   const [customBrandName, setCustomBrandName] = useState('');
 
-  useEffect(() => {
-    setTempPrice(prices[selectedCategory] || 0);
-  }, [selectedCategory, prices]);
+  const handleCategoryChange = (event) => {
+    const nextCategory = event.target.value;
+    setSelectedCategory(nextCategory);
+    setTempPrice(prices[nextCategory] || 0);
+  };
 
   const updateCategoryPrice = () => {
-    setPrices({ ...prices, [selectedCategory]: Number(tempPrice) });
+    setPrices((prev) => ({ ...prev, [selectedCategory]: Number(tempPrice) }));
     pushToast({ type: 'success', title: 'Guncellendi', message: 'Kategori fiyati degistirildi.' });
   };
 
@@ -49,12 +51,6 @@ export default function AISettings() {
     setCustomBrandName('');
     setIsAddingNewBrand(false);
     pushToast({ type: 'success', title: 'Basarili', message: 'Marka segmenti guncellendi.' });
-  };
-
-  const removeBrand = (tierKey, brandName) => {
-    const updatedTiers = { ...tiers };
-    updatedTiers[tierKey].brands = updatedTiers[tierKey].brands.filter(b => b !== brandName);
-    setTiers(updatedTiers);
   };
 
   const addModel = () => {
@@ -107,7 +103,7 @@ export default function AISettings() {
               Katalog Fiyat Ayari
             </h2>
             <div className="space-y-4">
-              <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-xl font-bold outline-none">
+              <select value={selectedCategory} onChange={handleCategoryChange} className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-xl font-bold outline-none">
                 {aiCatalogCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
               </select>
               <div className="flex gap-2">

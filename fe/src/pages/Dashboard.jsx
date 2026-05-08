@@ -4,7 +4,7 @@ import { useService } from '../context/ServiceContext';
 import StatCard from '../components/StatCard';
 
 export default function Dashboard() {
-  const { jobs = [], appointments = [], customers = [], vehicles = [], payments = [], syncRemoteData, isBootstrapping } = useService();
+  const { jobs = [], appointments = [], payments = [], syncRemoteData, isBootstrapping } = useService();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {

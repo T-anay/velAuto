@@ -3,7 +3,7 @@ import { useService } from '../context/ServiceContext';
 import { useNavigate } from 'react-router-dom';
 
 export default function ActiveJobs() {
-    const { jobs, updateJob } = useService();
+    const { jobs } = useService();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
 

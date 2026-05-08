@@ -59,4 +59,9 @@ public class NotificationServiceImpl implements NotificationService {
     System.out.println("İletişim: support@velauto.com");
     System.out.println("=".repeat(80));
   }
+
+  @Override
+  public void sendSystemNotification(String title, String message) {
+
+  }
 }

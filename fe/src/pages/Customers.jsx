@@ -3,7 +3,6 @@ import { useService } from '../context/ServiceContext';
 
 export default function Musteriler() {
     const { customers, addCustomer, deleteCustomer } = useService();
-    const { vehicles } = useService();
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
 

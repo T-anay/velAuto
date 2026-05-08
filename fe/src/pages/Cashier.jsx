@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useService } from '../context/ServiceContext';
 import { pushToast } from '../lib/toastBus';
 import BackButton from '../components/BackButton';
 
 export default function Kasa() {
-    const navigate = useNavigate();
     const { payments, processPayment } = useService();
 
     const [selectedId, setSelectedId] = useState(null);

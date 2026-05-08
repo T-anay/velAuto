@@ -1,48 +1,19 @@
 import { useMemo, useState } from 'react';
 import BackButton from '../components/BackButton';
 import { pushToast } from '../lib/toastBus';
-import { aiCatalogCategories, mapDamageToCatalog, damagePrices } from '../constants/damageCatalogMap';
+import { mapDamageToCatalog, damagePrices } from '../constants/damageCatalogMap';
 import { applyBrandMultiplier, getBrandTier } from '../constants/brandTiers';
 import { carBrands } from '../constants/carData';
-
-const KEYWORD_MAP = [
-  { keywords: ['titreme', 'sarsinti', 'vibrasyon'], suggestion: 'Mekanik Kontrol', confidence: 84 },
-  { keywords: ['fren', 'ses', 'otme'], suggestion: 'Fren Sistemi', confidence: 90 },
-  { keywords: ['hararet', 'isinma', 'su'], suggestion: 'Mekanik Kontrol', confidence: 88 },
-  { keywords: ['cizik', 'boya'], suggestion: 'Boya Islemi', confidence: 82 },
-  { keywords: ['gocuk', 'kaporta'], suggestion: 'Kaporta Onarim', confidence: 86 },
-  { keywords: ['far', 'elektrik'], suggestion: 'Elektrik Diagnostik', confidence: 76 },
-];
 
 export default function AIAnalysis() {
   const [complaintText, setComplaintText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [analysisRunAt, setAnalysisRunAt] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(aiCatalogCategories[0]);
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [remoteSuggestions, setRemoteSuggestions] = useState([]);
   const [aiReport, setAiReport] = useState('');
-  const [selectedSuggestions, setSelectedSuggestions] = useState([]);
   const [isRunning, setIsRunning] = useState(false);
-
-  const keywordSuggestions = useMemo(() => {
-    const text = complaintText.toLowerCase();
-    return KEYWORD_MAP
-      .filter((item) => item.keywords.some((keyword) => text.includes(keyword)))
-      .map((item) => ({ type: 'KEYWORD', label: item.suggestion, confidence: item.confidence }));
-  }, [complaintText]);
-
-  const fileFallbackSuggestions = useMemo(() => uploadedFiles.flatMap((file) => (
-    mapDamageToCatalog(file.name).map((category) => ({ type: 'FALLBACK', label: category, confidence: 70 }))
-  )), [uploadedFiles]);
-
-  const allSuggestions = useMemo(() => {
-    const unique = new Map();
-    [...remoteSuggestions, ...keywordSuggestions, ...fileFallbackSuggestions, { type: 'MANUEL', label: selectedCategory, confidence: 65 }]
-      .forEach((item) => unique.set(`${item.type}-${item.label}`, item));
-    return Array.from(unique.values());
-  }, [remoteSuggestions, keywordSuggestions, fileFallbackSuggestions, selectedCategory]);
 
   const runAnalysis = async () => {
     setIsRunning(true);
@@ -91,10 +62,6 @@ export default function AIAnalysis() {
     setAnalysisRunAt(new Date().toLocaleString('tr-TR'));
     setIsRunning(false);
     pushToast({ type: 'success', title: 'Analiz tamamlandi', message: next.length ? 'Lokal AI yaniti alindi.' : 'Fallback eslestirme kullanildi.' });
-  };
-
-  const toggleSuggestion = (label) => {
-    setSelectedSuggestions((prev) => prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label]);
   };
 
   const tier = getBrandTier(brand);

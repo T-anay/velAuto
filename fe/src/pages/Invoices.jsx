@@ -28,14 +28,9 @@ export default function Invoices() {
   }, [paymentMap]);
 
   const completedJobs = useMemo(() => jobs.filter((job) => String(job.statusKey || job.status).toUpperCase() === 'COMPLETED').sort((a, b) => Number(b.id) - Number(a.id)), [jobs]);
-
-  useEffect(() => {
-    if (!selectedInvoiceId && completedJobs.length > 0) {
-      setSelectedInvoiceId(String(completedJobs[0].id));
-    }
-  }, [completedJobs, selectedInvoiceId]);
-
-  const selectedJob = completedJobs.find((job) => String(job.id) === String(selectedInvoiceId));
+  const defaultSelectedInvoiceId = useMemo(() => (completedJobs.length > 0 ? String(completedJobs[0].id) : null), [completedJobs]);
+  const selectedInvoiceKey = selectedInvoiceId || defaultSelectedInvoiceId;
+  const selectedJob = completedJobs.find((job) => String(job.id) === String(selectedInvoiceKey));
   const selectedPayments = selectedJob ? (paymentMap[selectedJob.id] || []) : [];
 
   const invoiceSummary = useMemo(() => {
@@ -114,7 +109,7 @@ export default function Invoices() {
                 type="button"
                 key={job.id}
                 onClick={() => setSelectedInvoiceId(String(job.id))}
-                className={`w-full text-left p-4 rounded-xl border transition-all ${String(selectedInvoiceId) === String(job.id) ? 'border-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border-soft)] bg-[var(--bg-main)]'}`}
+                className={`w-full text-left p-4 rounded-xl border transition-all ${String(selectedInvoiceKey) === String(job.id) ? 'border-[var(--accent)] bg-[var(--accent)]/10' : 'border-[var(--border-soft)] bg-[var(--bg-main)]'}`}
               >
                 <p className="text-xs uppercase tracking-widest text-[var(--text-muted)] font-black">{job.plate}</p>
                 <p className="text-sm text-[var(--text-secondary)] mt-1">{job.customer}</p>

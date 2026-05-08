@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   api,
@@ -9,7 +10,6 @@ import {
   normalizeServiceForm,
   normalizeServiceItem,
   normalizeVehicle,
-  setStoredTokens,
   toNumber,
   deriveJobStatus,
   writeStorage,
@@ -174,7 +174,7 @@ export const ServiceProvider = ({ children }) => {
       try {
         const meta = deriveJobStatus(j.status || j.statusKey || j.raw?.status || 'IN_PROGRESS');
         return { ...j, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
-      } catch (e) {
+      } catch {
         return j;
       }
     }) : prev));
@@ -183,7 +183,7 @@ export const ServiceProvider = ({ children }) => {
       try {
         const meta = deriveJobStatus(a.status || a.statusKey || a.raw?.status || a.type || 'PENDING');
         return { ...a, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
-      } catch (e) {
+      } catch {
         return a;
       }
     }) : prev));
@@ -302,7 +302,7 @@ export const ServiceProvider = ({ children }) => {
 
   }, []);
 
-  const ensureCustomer = useCallback(async ({ fullName, phone, plate, email, address, notes }) => {
+  const ensureCustomer = useCallback(async ({ fullName, phone, plate, address, notes }) => {
     const normalizedPlate = normalizePlate(plate);
     const normalizedPhone = normalizePhoneForBackend(phone);
     const existingCustomer = customers.find((customer) =>

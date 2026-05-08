@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useService } from '../context/ServiceContext';
 import { pushToast } from '../lib/toastBus';
 // Eğer velautoApi dosyan services klasöründeyse '../services/velautoApi' olarak değiştir
 import { api } from '../api/velautoApi'; 
@@ -8,7 +7,6 @@ const ROLES = ['ADMIN', 'STAFF', 'SUPER_ADMIN'];
 const CREATABLE_ROLES = ['ADMIN', 'STAFF'];
 
 export default function Staff() {
-  const { user } = useService();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   
