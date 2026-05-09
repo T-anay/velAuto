@@ -80,10 +80,60 @@ export default function Musteriler() {
                 <button onClick={() => setShowAddModal(true)} className="bg-[var(--border-strong)] text-[var(--text-primary)] px-6 py-3 rounded-xl font-bold hover:bg-opacity-80 transition-all text-sm uppercase tracking-widest shadow-lg">YENI MUSTERI EKLE</button>
             </div>
 
-            <div className="relative mb-8">
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-500 font-black tracking-widest text-sm">ARA</div>
-                <input type="text" placeholder="Isim ve Telefon ile arayinız" className="w-full p-4 pl-20 bg-[var(--bg-card)] border border-[var(--border-strong)]/50 rounded-xl text-base text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all shadow-lg placeholder:text-gray-600" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <div className="relative mb-10 group z-30">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <svg className="w-6 h-6 text-gray-500 group-focus-within:text-[var(--accent)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input 
+                    type="text" 
+                    placeholder="İsim veya telefon ile hızlı ara..." 
+                    className="w-full h-16 pl-14 pr-12 bg-[var(--bg-card)] border border-[var(--border-strong)]/50 rounded-2xl text-base text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all font-bold shadow-xl" 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                />
+                {searchTerm && (
+                    <button
+                        onClick={() => setSearchTerm('')}
+                        className="absolute inset-y-0 right-0 pr-5 flex items-center text-gray-500 hover:text-[var(--accent)] transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                )}
+
+                {/* Dropdown Sonuçları */}
+                {searchTerm && (
+                    <div className="absolute z-50 w-full mt-2 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                        {filteredMusteriler.length > 0 ? (
+                            <ul className="py-2">
+                                {filteredMusteriler.map(m => (
+                                    <li 
+                                        key={m.id} 
+                                        onClick={() => setSearchTerm(m.name)}
+                                        className="px-6 py-4 hover:bg-[var(--accent)]/10 cursor-pointer transition-all border-b border-[var(--border-soft)]/30 last:border-0 flex items-center justify-between group/item"
+                                    >
+                                        <div>
+                                            <p className="text-[var(--text-primary)] font-black text-sm group-hover/item:text-[var(--accent)]">{m.name}</p>
+                                            <p className="text-xs text-gray-500 font-bold mt-0.5">{formatPhoneDisplay(m.phone)}</p>
+                                        </div>
+                                        <div className="text-[var(--accent)] opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="px-6 py-8 text-center text-gray-500 text-sm font-bold">Eşleşen müşteri bulunamadı.</div>
+                        )}
+                    </div>
+                )}
             </div>
+
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filteredMusteriler.length > 0 ? (

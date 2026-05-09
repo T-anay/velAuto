@@ -51,8 +51,11 @@ export default function Notifications() {
       }));
 
     const appointmentRequests = (appointments || [])
-      .filter(app => app.status === 'ONAY BEKLİYOR')
+      .filter(app => app.status === 'PENDING')
+
+
       .map((app) => ({
+
         id: `app-${app.id}`,
         type: 'APPOINTMENT',
         title: 'Yeni Randevu Talebi',

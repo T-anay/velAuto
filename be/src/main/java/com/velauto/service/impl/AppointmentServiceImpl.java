@@ -92,6 +92,8 @@ public class AppointmentServiceImpl implements AppointmentService {
       appointment.setStatus(com.velauto.entity.enums.AppointmentStatus.PENDING);
     }
 
+
+
     appointment.setCreatedBy(userId);
     appointment.setCreatedAt(now);
 
@@ -295,12 +297,23 @@ public class AppointmentServiceImpl implements AppointmentService {
     String sanitizedFirstName = XssUtils.sanitize(request.getFirstName());
     String sanitizedLastName = XssUtils.sanitize(request.getLastName());
 
-    Optional<User> existingUserOptional = userRepository.findByPhoneAndDeletedAtIsNull(normalizedPhone);
+    Optional<User> userByEmail = userRepository.findByEmail(request.getEmail());
+    Optional<User> userByPhone = userRepository.findByPhoneAndDeletedAtIsNull(normalizedPhone);
+
+    Optional<User> existingUserOptional = userByEmail.isPresent() ? userByEmail : userByPhone;
 
     Customer customer;
     if (existingUserOptional.isPresent()) {
-      customer = customerRepository.findByUser(existingUserOptional.get())
-          .orElseThrow(() -> new BusinessException("Müşteri profili bulunamadı"));
+      User user = existingUserOptional.get();
+      customer = customerRepository.findByUser(user)
+          .orElseGet(() -> {
+            Customer newCustomer = new Customer();
+            newCustomer.setUser(user);
+            newCustomer.setCustomerType(com.velauto.entity.enums.CustomerType.INDIVIDUAL);
+            newCustomer.setDiscountRate(java.math.BigDecimal.ZERO);
+            newCustomer.setCreatedAt(LocalDateTime.now());
+            return customerRepository.save(newCustomer);
+          });
     } else {
       // Use provided email instead of generating a temporary one
       com.velauto.dto.CustomerCreateDto customerCreateDto = com.velauto.dto.CustomerCreateDto.builder()
@@ -343,8 +356,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         .appointmentDate(appointmentDate)
         .status(com.velauto.entity.enums.AppointmentStatus.PENDING)
         .notes(XssUtils.sanitize(request.getComplaint()))
+        .createdBy(0) // System/Web user ID
         .createdAt(LocalDateTime.now())
         .build();
+
 
     Appointment savedAppointment = appointmentRepository.save(appointment);
 

@@ -31,16 +31,58 @@ export default function ActiveJobs() {
         <div className="animate-in fade-in duration-500">
             <h1 className="text-3xl font-black mb-8 tracking-tight">Aktif İşler & Araçlar</h1>
 
-            <div className="flex gap-4 mb-8 flex-col lg:flex-row">
+            <div className="relative mb-10 group z-30">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <svg className="w-6 h-6 text-gray-500 group-focus-within:text-[var(--accent)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
                 <input
                     type="text"
                     value={search}
-                    placeholder="Plaka, müşteri veya marka ile ara..."
-                    className="flex-1 p-4 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-xl text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-all shadow-lg"
+                    placeholder="Plaka, müşteri veya marka ile hızlı ara..."
+                    className="w-full h-16 pl-14 pr-12 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-2xl text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all font-bold shadow-xl"
                     onChange={(e) => setSearch(e.target.value)}
                 />
+                {search && (
+                    <button
+                        onClick={() => setSearch('')}
+                        className="absolute inset-y-0 right-0 pr-5 flex items-center text-gray-500 hover:text-[var(--accent)] transition-colors"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                )}
 
+                {/* Dropdown Sonuçları */}
+                {search && (
+                    <div className="absolute z-50 w-full mt-2 bg-[var(--bg-card)] border border-[var(--border-strong)] rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                        {filteredJobs.length > 0 ? (
+                            <ul className="py-2">
+                                {filteredJobs.map(job => (
+                                    <li 
+                                        key={job.id} 
+                                        onClick={() => setSearch(job.plate)}
+                                        className="px-6 py-4 hover:bg-[var(--accent)]/10 cursor-pointer transition-all border-b border-[var(--border-strong)]/30 last:border-0 flex items-center justify-between group/item"
+                                    >
+                                        <div>
+                                            <p className="text-[var(--text-primary)] font-black text-sm group-hover/item:text-[var(--accent)]">{job.plate}</p>
+                                            <p className="text-xs text-gray-500 font-bold mt-0.5">{job.customer} • {job.brand}</p>
+                                        </div>
+                                        <span className={`px-2 py-1 rounded text-[9px] font-black border ${job.color === 'green' ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]' : 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]'}`}>
+                                            {job.statusLabel || job.status}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <div className="px-6 py-8 text-center text-gray-500 text-sm font-bold">Eşleşen iş bulunamadı.</div>
+                        )}
+                    </div>
+                )}
             </div>
+
 
             {filteredJobs.length === 0 ? (
                 <div className="text-center p-16 text-gray-400">Aradığınız kriterlere uygun aktif iş bulunamadı.</div>

@@ -91,11 +91,9 @@ const normalizeJobList = (serviceForms, customers, vehicles) => {
   const customerLookup = new Map(customers.map((customer) => [String(customer.id), customer]));
   const vehicleLookup = new Map(vehicles.map((vehicle) => [String(vehicle.id), vehicle]));
 
-  const jobs = serviceForms.map((form) => normalizeServiceForm(form, customerLookup, vehicleLookup));
-  if (jobs.length > 0) return jobs;
-
-  return vehicles.map((vehicle) => normalizeVehicle(vehicle, customerLookup));
+  return serviceForms.map((form) => normalizeServiceForm(form, customerLookup, vehicleLookup));
 };
+
 
 const normalizeText = (...args) => {
   for (let arg of args) {
@@ -221,8 +219,13 @@ export const ServiceProvider = ({ children }) => {
       return;
     }
 
-    setIsBootstrapping(true);
+    // Only show "System is Preparing" if we don't have existing data in state
+    const hasData = (appointments.length > 0 || jobs.length > 0);
+    if (!hasData) {
+      setIsBootstrapping(true);
+    }
     setError('');
+
 
     try {
       if (!tokens.accessToken && tokens.refreshToken) {
@@ -274,14 +277,23 @@ export const ServiceProvider = ({ children }) => {
       setCustomers(normalizedCustomers);
       setVehicles(normalizedVehicles);
       setAppointments(enrichedAppointments);
-      setJobs(enrichedJobs);
+      
+      // Akıllı Birleştirme: Lokaldeki henüz backend'e tam yansımamış işleri koru
+      setJobs((prev) => {
+        const localOnlyJobs = prev.filter(p => typeof p.id === 'string' && p.id.startsWith('temp-'));
+        const backendJobIds = new Set(enrichedJobs.map(j => String(j.id)));
+        const uniqueLocalJobs = localOnlyJobs.filter(l => !backendJobIds.has(String(l.id)));
+        return [...enrichedJobs, ...uniqueLocalJobs];
+      });
+
       setServiceCatalog(normalizedCatalog);
 
       setPayments((currentPayments) => {
         const queue = Array.isArray(currentPayments) ? currentPayments : [];
-        const jobIds = new Set(normalizedJobs.map((job) => String(job.id)));
+        const jobIds = new Set(enrichedJobs.map((job) => String(job.id)));
         return queue.filter((payment) => jobIds.has(String(payment.serviceFormId ?? payment.id)) || payment.status === 'PENDING');
       });
+
     } catch (syncError) {
       setError(syncError.message || 'Veriler yüklenemedi.');
       pushToast({
@@ -577,14 +589,26 @@ export const ServiceProvider = ({ children }) => {
   }, [customers, ensureCustomer, vehicles]); // <-- vehicles bağımlılığını eklemeyi unutma!
 
   const approveAppointment = useCallback(async (id) => {
-    setAppointments((prev) => prev.map((appointment) => String(appointment.id) === String(id)
-      ? { ...appointment, status: 'ONAYLI', type: 'green' }
-      : appointment));
+    setAppointments((prev) => prev.map((appointment) => {
+      if (String(appointment.id) === String(id)) {
+        const meta = deriveJobStatus('APPROVED');
+        return { 
+          ...appointment, 
+          status: 'ONAYLI', 
+          statusKey: 'APPROVED', 
+          statusLabel: meta.label, 
+          color: meta.color 
+        };
+      }
+      return appointment;
+    }));
+
 
     await api.appointments.update(id, { status: 'APPROVED' }).catch(() => null);
     pushToast({ type: 'success', title: 'Randevu onaylandı', message: 'Randevu durumu güncellendi.' });
     return { success: true };
   }, []);
+
 
   const deleteAppointment = useCallback(async (id) => {
     if (isBackendCompatibleIntegerId(id)) {
@@ -622,12 +646,17 @@ export const ServiceProvider = ({ children }) => {
   }, []);
 
   const getAppointmentStatus = useCallback((appointment) => {
+    if (!appointment || !appointment.id) return { status: 'PENDING', at: null };
     const override = appointmentOverrides[appointment.id];
     if (override) return override;
+    const statusRaw = String(appointment.status || '').toUpperCase();
+    const isApproved = ['APPROVED', 'ONAYLI', 'ONAYLANDI'].includes(statusRaw);
     return {
-      status: appointment.status === 'ONAYLI' ? 'APPROVED' : 'PENDING',
+      status: isApproved ? 'APPROVED' : 'PENDING',
       at: null,
     };
+
+
   }, [appointmentOverrides]);
 
   const addJob = useCallback(async (newJob) => {
@@ -662,28 +691,69 @@ export const ServiceProvider = ({ children }) => {
       const currentKm = toNumber(newJob.currentKm, 0);
       const complaint = newJob.complaint || newJob.description || 'Belirtilmedi';
 
-      const serviceForm = { id: Date.now(), vehicleId: vehicle.id, customerId: customer.id, currentKm };
+      // Geçici ID ile hemen state'e ekle (UI anında güncellensin)
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      const tempJob = {
+        id: tempId,
+        plate,
+        customer: customer.fullName,
+        brand: newJob.brand || 'Araç',
+        model: newJob.model || '',
+        complaint: complaint,
+        status: 'IN_PROGRESS',
+        statusKey: 'IN_PROGRESS',
+        statusLabel: 'İşlemde',
+        color: 'blue',
+        items: [],
+        total: 0,
+        createdAt: new Date().toISOString()
+      };
 
-      const normalizedJob = normalizeServiceForm(serviceForm, new Map([[String(customer.id), customer]]), new Map([[String(vehicle.id), { ...vehicle, customer }]]));
-      normalizedJob.plate = plate;
-      normalizedJob.customer = customer.fullName;
-      normalizedJob.brand = newJob.brand || normalizedJob.brand;
-      normalizedJob.complaint = complaint || normalizedJob.complaint;
-      normalizedJob.items = Array.isArray(newJob.items) ? newJob.items.map(normalizeServiceItem) : [];
-      normalizedJob.total = toNumber(newJob.total, normalizedJob.items.reduce((sum, item) => sum + toNumber(item.price, 0), 0));
-      const meta = deriveJobStatus(newJob.status || normalizedJob.status);
-      normalizedJob.status = meta.status;
-      normalizedJob.color = meta.color;
-      normalizedJob.statusKey = meta.key || meta.status;
-      normalizedJob.statusLabel = meta.label || meta.status;
+      setJobs(prev => [...prev, tempJob]);
 
-      setJobs((prev) => [...prev.filter((job) => String(job.id) !== String(normalizedJob.id)), normalizedJob]);
+      // Backend'e gönder
+      let backendJob = null;
+      try {
+        const payload = {
+          vehicleId: vehicle.id,
+          customerId: customer.id,
+          currentKm,
+          description: complaint, // Backend'in beklediği yeni alan adı
+          complaints: complaint,  // Geriye dönük uyumluluk için
+          status: 'IN_PROGRESS'
+        };
+
+
+        if (newJob.appointmentId) {
+          backendJob = await api.serviceForms.createFromAppointment(newJob.appointmentId, payload);
+        } else {
+          backendJob = await api.serviceForms.create(payload);
+        }
+      } catch (apiErr) {
+        console.error("Backend job creation failed, keeping local-only for now:", apiErr);
+      }
+
+      if (backendJob) {
+        const normalizedBackend = normalizeServiceForm(backendJob, new Map([[String(customer.id), customer]]), new Map([[String(vehicle.id), { ...vehicle, customer }]]));
+        const meta = deriveJobStatus(normalizedBackend.status);
+        const finalJob = {
+          ...normalizedBackend,
+          statusKey: meta.key,
+          statusLabel: meta.label,
+          color: meta.color
+        };
+
+        setJobs(prev => prev.map(j => j.id === tempId ? finalJob : j));
+        return { success: true, job: finalJob };
+      }
+
       pushToast({
         type: 'success',
         title: 'İş emri oluşturuldu',
         message: `${plate} plakalı araç için servis kaydı açıldı.`,
       });
-      return { success: true, job: normalizedJob };
+      return { success: true, job: tempJob };
+
     } finally {
       setIsLoadingJob(false);
     }

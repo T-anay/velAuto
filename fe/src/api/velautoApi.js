@@ -83,12 +83,22 @@ const deriveJobStatus = (status) => {
     return { status: 'WAITING_PART', key: 'WAITING_PART', label: 'Parça Bekliyor', color: 'orange' };
   }
 
-  if (['PENDING', 'BEKLEMEDE', 'ONAY BEKLİYOR', 'ONAYLI'].includes(normalized)) {
+  if (['APPROVED', 'ONAYLI', 'ONAYLANDI', 'CONFIRMED', 'ACCEPTED'].includes(normalized)) {
+    return { status: 'APPROVED', key: 'APPROVED', label: 'Onaylandı', color: 'green' };
+  }
+
+  if (['REVISED', 'REVİZE EDİLDİ'].includes(normalized)) {
+    return { status: 'REVISED', key: 'REVISED', label: 'Revize Edildi', color: 'orange' };
+  }
+
+  if (['PENDING', 'BEKLEMEDE', 'ONAY BEKLİYOR'].includes(normalized)) {
     return { status: 'PENDING', key: 'PENDING', label: 'Beklemede', color: 'amber' };
   }
 
+
   return { status: 'IN_PROGRESS', key: 'IN_PROGRESS', label: 'İşlemde', color: 'blue' };
 };
+
 
 const normalizeServiceItem = (item) => ({
   id: item?.id ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -169,8 +179,10 @@ export const normalizeAppointment = (appointment, customerLookup = new Map(), ve
     brand: normalizeText(appointment?.brand, appointment?.make, vehicle?.brand),
     model: normalizeText(appointment?.model, appointment?.modelName, vehicle?.model),
     email: normalizeText(appointment?.email, customer?.email),
+    createdBy: appointment?.createdBy || null,
   };
 };
+
 
 export const normalizeServiceCatalogItem = (item) => ({
   id: item?.id,
@@ -206,7 +218,8 @@ export const normalizeServiceForm = (form, customerLookup = new Map(), vehicleLo
     plate: normalizePlate(form?.plate, vehicle?.licensePlate, vehicle?.plate),
     customer: normalizeText(form?.customerName, customer?.fullName, customer?.name, vehicle?.customerName, 'Müşteri'),
     brand: normalizeText(form?.brandModel, vehicle?.brandModel, [vehicle?.brand, vehicle?.model].filter(Boolean).join(' '), 'Araç'),
-    complaint: normalizeText(form?.description, form?.complaint, vehicle?.complaint),
+    complaint: normalizeText(form?.complaints, form?.description, form?.complaint, vehicle?.complaint),
+
     status: jobStatus.status,
     color: jobStatus.color,
     items,

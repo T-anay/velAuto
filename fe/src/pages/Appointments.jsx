@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useService } from '../context/ServiceContext';
+
 import PlateInput from '../components/PlateInput';
 import CustomerSearch from '../components/CustomerSearch';
 import { carBrands } from '../constants/carData'; // DİKKAT: Bu importun yolu projenizle eşleşmeli
@@ -8,7 +9,17 @@ import { validatePlate } from '../constants/plateFormats';
 
 export default function Appointments() {
     const navigate = useNavigate();
-    const { appointments, approveAppointment, addAppointment, deleteAppointment, customers, addJob, setAppointmentOverride, getAppointmentStatus } = useService();
+    const { appointments, approveAppointment, addAppointment, deleteAppointment, customers, addJob, setAppointmentOverride, getAppointmentStatus, syncRemoteData, refreshData, reviseAppointment } = useService();
+
+    
+    useEffect(() => {
+        const fetch = syncRemoteData || refreshData;
+        if (fetch) fetch();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); 
+
+
+
 
     const handleCustomerSelect = (selected) => {
         if (!selected) return;
@@ -41,6 +52,11 @@ export default function Appointments() {
 
     // Ozel Silme Modali Icin State
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, plate: '' });
+    const [reviseModal, setReviseModal] = useState({ isOpen: false, id: null, plate: '', time: formatDateTimeLocal(), notes: '' });
+    const [search, setSearch] = useState('');
+    const [sortBy, setSortBy] = useState('date'); // 'date' or 'name'
+
+
 
     const formatPhoneDisplay = (phone) => {
         const cleaned = phone.replace(/\D/g, '');
@@ -134,9 +150,21 @@ export default function Appointments() {
         }
     };
 
+    const handleRevise = async () => {
+        if (!reviseModal.id) return;
+        try {
+            await reviseAppointment(reviseModal.id, reviseModal.time, reviseModal.notes);
+            setReviseModal({ isOpen: false, id: null, plate: '', time: formatDateTimeLocal(), notes: '' });
+        } catch (err) {
+            setError('Revize işlemi başarısız: ' + err.message);
+        }
+    };
+
+
     const handleOpenJobOrder = async (app) => {
         try {
             await addJob({
+                appointmentId: app.id,
                 plate: app.plate,
                 customer: app.customer,
                 phone: app.phone,
@@ -146,6 +174,7 @@ export default function Appointments() {
                 total: 0,
                 status: 'IN_PROGRESS'
             });
+
             await setAppointmentOverride(app.id, 'CONVERTED');
             navigate('/active-jobs');
         } catch (err) {
@@ -155,148 +184,284 @@ export default function Appointments() {
     };
 
     return (
-        <div className="animate-in fade-in duration-500">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
-                <h1 className="text-3xl font-black tracking-tight text-[var(--text-primary)] uppercase">Takvim ve Randevular</h1>
-                <div className="flex gap-4">
-                    <div className="bg-[var(--bg-card)] px-4 py-2 rounded-lg border border-[var(--border-strong)] text-xs font-bold text-gray-400">
-                        Toplam: {appointments.length} Kayit
+        <div className="animate-in fade-in duration-700 max-w-[1600px] mx-auto">
+            {/* Sayfa Başlığı ve İstatistikler */}
+            <div className="flex flex-col md:flex-row justify-between items-end mb-10 gap-6">
+                <div className="space-y-1">
+                    <h1 className="text-4xl font-black tracking-tight text-[var(--text-primary)] uppercase bg-gradient-to-r from-[var(--text-primary)] to-[var(--accent)] bg-clip-text text-transparent">
+                        Takvim & Randevular
+                    </h1>
+                    <p className="text-sm font-medium text-gray-500 uppercase tracking-widest opacity-80">Atölye Kapasite ve Planlama Yönetimi</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="bg-[var(--bg-card)]/50 backdrop-blur-md px-6 py-3 rounded-2xl border border-[var(--border-soft)] shadow-sm">
+                        <span className="text-[10px] font-black text-gray-500 block uppercase mb-1">Bekleyen</span>
+                        <span className="text-2xl font-black text-[var(--text-primary)]">{appointments.filter(a => getAppointmentStatus(a).status === 'PENDING').length}</span>
+                    </div>
+                    <div className="bg-[var(--accent)]/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-[var(--accent)]/20 shadow-sm">
+                        <span className="text-[10px] font-black text-[var(--accent)] block uppercase mb-1">Onaylı</span>
+                        <span className="text-2xl font-black text-[var(--accent)]">{appointments.filter(a => getAppointmentStatus(a).status === 'APPROVED').length}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-[var(--bg-card)] p-6 md:p-8 rounded-2xl border border-[var(--border-strong)]/30 shadow-2xl mb-8 animate-in slide-in-from-top-4 duration-700">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8 items-stretch">
-                    {/* SOL SUTUN */}
-                    <div className="space-y-5 h-full rounded-2xl border border-[var(--border-strong)]/20 bg-[var(--bg-main)]/35 p-5 md:p-6 flex flex-col">
-                        <h3 className="text-[var(--accent)] font-bold text-lg flex items-center gap-2 border-b border-[var(--border-strong)]/30 pb-3">
-                            <span className="bg-[var(--accent)]/10 px-3 py-1 rounded-lg text-sm font-black">1</span> Musteri ve Arac Bilgileri
-                        </h3>
-                        <div className="mb-4">
-                            <label className="text-[10px] text-gray-500 font-bold uppercase ml-1 tracking-wider font-sans block mb-1">Kayıtlı Müşteri Ara</label>
-                            <CustomerSearch customers={customers} onSelect={handleCustomerSelect} />
+
+
+
+            <div className="bg-[var(--bg-card)] backdrop-blur-xl p-8 rounded-[2.5rem] border border-[var(--border-soft)] shadow-2xl mb-12 animate-in slide-in-from-top-6 duration-1000 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-[var(--accent)]/10 transition-colors duration-700" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full -ml-32 -mb-32 blur-3xl" />
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 xl:gap-16 items-stretch relative z-10">
+                    {/* SOL SUTUN: Müşteri */}
+                    <div className="space-y-6 flex flex-col">
+                        <div className="flex items-center gap-4 border-b border-[var(--border-soft)] pb-4">
+                            <span className="w-10 h-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center font-black shadow-lg shadow-[var(--accent)]/20">1</span>
+                            <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight">Müşteri ve Araç Bilgileri</h3>
+
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-gray-500 font-bold uppercase ml-1 tracking-wider font-sans">Musteri Ad Soyad *</label>
-                                <input type="text" placeholder="Ahmet Yilmaz" value={formValues.customer} onChange={(e) => setFormValues(prev => ({ ...prev, customer: e.target.value }))} className={`w-full min-h-[56px] p-4 bg-[var(--bg-main)] border rounded-xl text-[var(--text-primary)] outline-none transition-all placeholder:text-gray-700 font-sans ${errorFields.includes('customer') ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.1)]' : 'border-[var(--border-strong)] focus:border-[var(--accent)]'}`} />
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2 block opacity-70">Hızlı Müşteri Seçimi</label>
+                                <CustomerSearch customers={customers} onSelect={handleCustomerSelect} />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-gray-500 font-bold uppercase ml-1 tracking-wider font-sans">Telefon Numarasi *</label>
-                                <div className="flex gap-2 items-stretch">
-                                    <div className="bg-[var(--bg-main)] border border-[var(--border-strong)] rounded-xl px-4 min-w-[72px] min-h-[56px] text-gray-500 font-bold text-sm flex items-center justify-center font-sans">+90</div>
-                                    <input type="tel" placeholder="5XX XXX XX XX" value={formatPhoneDisplay(formValues.phone)} onChange={(e) => setFormValues(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} className={`flex-1 min-h-[56px] p-4 bg-[var(--bg-main)] border rounded-xl text-[var(--text-primary)] outline-none transition-all placeholder:text-gray-700 font-sans ${errorFields.includes('phone') ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.1)]' : 'border-[var(--border-strong)] focus:border-[var(--accent)]'}`} />
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="group space-y-1.5">
+                                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1 block opacity-70">Ad Soyad *</label>
+                                    <input type="text" placeholder="Ahmet Yilmaz" value={formValues.customer} onChange={(e) => setFormValues(prev => ({ ...prev, customer: e.target.value }))} className={`w-full h-14 px-5 bg-[var(--bg-main)]/50 backdrop-blur-sm border rounded-2xl text-[var(--text-primary)] outline-none transition-all font-bold focus:ring-4 focus:ring-[var(--accent)]/5 ${errorFields.includes('customer') ? 'border-red-500/50' : 'border-[var(--border-soft)] focus:border-[var(--accent)]'}`} />
+                                </div>
+                                <div className="group space-y-1.5">
+                                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1 block opacity-70">Telefon *</label>
+                                    <div className="flex gap-2 items-stretch h-14">
+                                        <div className="bg-[var(--bg-main)]/80 border border-[var(--border-soft)] rounded-2xl px-4 flex items-center justify-center text-gray-500 font-black text-xs tracking-widest">+90</div>
+                                        <input type="tel" placeholder="5XX XXX XX XX" value={formatPhoneDisplay(formValues.phone)} onChange={(e) => setFormValues(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 10) }))} className={`flex-1 px-5 bg-[var(--bg-main)]/50 backdrop-blur-sm border rounded-2xl text-[var(--text-primary)] outline-none transition-all font-bold focus:ring-4 focus:ring-[var(--accent)]/5 ${errorFields.includes('phone') ? 'border-red-500/50' : 'border-[var(--border-soft)] focus:border-[var(--accent)]'}`} />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <PlateInput country={formValues.plateCountry} value={formValues.plate} onCountryChange={(plateCountry) => setFormValues(prev => ({ ...prev, plateCountry }))} onChange={(plate) => setFormValues(prev => ({ ...prev, plate }))} error={errorFields.includes('plate')} />
+                            
+                            <PlateInput country={formValues.plateCountry} value={formValues.plate} onCountryChange={(plateCountry) => setFormValues(prev => ({ ...prev, plateCountry }))} onChange={(plate) => setFormValues(prev => ({ ...prev, plate }))} error={errorFields.includes('plate')} />
 
-                        {/* YENİ: Marka Model Seçimi */}
-                        <div>
-                            <label className="text-[10px] text-gray-500 font-bold uppercase ml-1 tracking-wider font-sans mb-1 block">Marka / Model Seçimi</label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1">
+                                <div className="group space-y-1.5">
+                                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1 block opacity-70">Marka</label>
                                     <select
                                         value={formValues.brand}
-                                        onChange={(e) => {
-                                            const nextBrand = e.target.value;
-                                            setFormValues((prev) => ({ ...prev, brand: nextBrand, model: '' }));
-                                            setErrorFields((prev) => prev.filter((field) => field !== 'brand' && field !== 'model'));
-                                            if (error) setError('');
-                                        }}
-                                        className={`w-full min-h-[56px] p-4 bg-[var(--bg-main)] border rounded-xl text-[var(--text-primary)] outline-none transition-all font-sans text-sm ${errorFields.includes('brand') ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.1)]' : 'border-[var(--border-strong)] focus:border-[var(--accent)]'}`}
+                                        onChange={(e) => setFormValues(prev => ({ ...prev, brand: e.target.value, model: '' }))}
+                                        className={`w-full h-14 px-5 bg-[var(--bg-main)]/50 border rounded-2xl text-[var(--text-primary)] outline-none appearance-none font-bold ${errorFields.includes('brand') ? 'border-red-500/50' : 'border-[var(--border-soft)] focus:border-[var(--accent)]'}`}
                                     >
                                         <option value="">Marka Seçin</option>
-                                        {Object.keys(carBrands || {}).sort((a, b) => a === 'Diğer' ? 1 : b === 'Diğer' ? -1 : a.localeCompare(b)).map((brand) => (
-                                            <option key={brand} value={brand}>{brand}</option>
-                                        ))}
+                                        {Object.keys(carBrands || {}).sort().map(b => <option key={b} value={b}>{b}</option>)}
                                     </select>
-                                    {errorFields.includes('brand') && <p className="text-[11px] font-bold text-red-400 ml-1">Seçim yapmadınız.</p>}
-
                                 </div>
-
-                                <div className="space-y-1">
+                                <div className="group space-y-1.5">
+                                    <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1 block opacity-70">Model</label>
                                     <select
                                         value={formValues.model}
-                                        onChange={(e) => {
-                                            setFormValues((prev) => ({ ...prev, model: e.target.value }));
-                                            setErrorFields((prev) => prev.filter((field) => field !== 'model'));
-                                            if (error) setError('');
-                                        }}
-                                        disabled={!formValues.brand || formValues.brand === 'Diğer'}
-                                        className={`w-full min-h-[56px] p-4 bg-[var(--bg-main)] border rounded-xl text-[var(--text-primary)] outline-none transition-all disabled:opacity-50 font-sans text-sm ${errorFields.includes('model') ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.1)]' : 'border-[var(--border-strong)] focus:border-[var(--accent)]'}`}
+                                        onChange={(e) => setFormValues(prev => ({ ...prev, model: e.target.value }))}
+                                        disabled={!formValues.brand}
+                                        className="w-full h-14 px-5 bg-[var(--bg-main)]/50 border border-[var(--border-soft)] rounded-2xl text-[var(--text-primary)] outline-none appearance-none font-bold disabled:opacity-30 focus:border-[var(--accent)]"
                                     >
                                         <option value="">Model Seçin</option>
-                                        {formValues.brand && carBrands[formValues.brand] && [...carBrands[formValues.brand]].sort((a, b) => a.localeCompare(b, 'tr')).map((model) => (
-                                            <option key={model} value={model}>{model}</option>
-                                        ))}
+                                        {formValues.brand && carBrands[formValues.brand]?.sort().map(m => <option key={m} value={m}>{m}</option>)}
                                     </select>
-                                    {errorFields.includes('model') && <p className="text-[11px] font-bold text-red-400 ml-1">Seçim yapmadınız.</p>}
-
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* SAG SUTUN */}
-                    <div className="space-y-5 h-full rounded-2xl border border-[var(--border-strong)]/20 bg-[var(--bg-main)]/35 p-5 md:p-6 flex flex-col">
-                        <h3 className="text-[var(--accent)] font-bold text-lg flex items-center gap-2 border-b border-[var(--border-strong)]/30 pb-3">
-                            <span className="bg-[var(--accent)]/10 px-3 py-1 rounded-lg text-sm font-black">2</span> Randevu Planlamasi
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-gray-500 font-bold uppercase ml-1 tracking-wider">Tarih ve Saat *</label>
-                                <input type="datetime-local" min={now} value={formValues.time} onChange={(e) => setFormValues(prev => ({ ...prev, time: e.target.value }))} className={`w-full min-h-[56px] p-4 bg-white border rounded-xl text-slate-800 focus:border-[var(--accent)] outline-none transition-all ${errorFields.includes('time') ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.1)]' : 'border-slate-200'}`} />
+                    {/* SAG SUTUN: Planlama */}
+                    <div className="space-y-6 flex flex-col">
+                        <div className="flex items-center gap-4 border-b border-[var(--border-soft)] pb-4">
+                            <span className="w-10 h-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center font-black shadow-lg shadow-[var(--accent)]/20">2</span>
+                            <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-tight">Randevu Planlaması</h3>
+
+                        </div>
+                        
+                        <div className="space-y-6 flex-1">
+                            <div className="group space-y-2">
+                                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1 block opacity-70">Tarih ve Saat *</label>
+                                <input type="datetime-local" min={now} value={formValues.time} onChange={(e) => setFormValues(prev => ({ ...prev, time: e.target.value }))} className={`w-full h-14 px-5 bg-white border rounded-2xl text-slate-800 font-bold focus:ring-4 focus:ring-[var(--accent)]/5 transition-all outline-none ${errorFields.includes('time') ? 'border-red-500/50' : 'border-slate-200 focus:border-[var(--accent)]'}`} />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] text-gray-500 font-bold uppercase ml-1 tracking-wider">Yapilacak Islem *</label>
-                                <input type="text" placeholder="Orn: Yag Degisimi" value={formValues.service} onChange={(e) => setFormValues(prev => ({ ...prev, service: e.target.value }))} className={`w-full min-h-[56px] p-4 bg-[var(--bg-main)] border rounded-xl text-[var(--text-primary)] focus:border-[var(--accent)] outline-none transition-all placeholder:text-gray-700 ${errorFields.includes('service') ? 'border-red-500 shadow-[0_0_10px_rgba(236,77,55,0.1)]' : 'border-[var(--border-strong)]'}`} />
+                            <div className="group space-y-2">
+                                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest ml-1 block opacity-70">Yapılacak İşlem / Şikayet *</label>
+                                <textarea placeholder="Örn: Periyodik Bakım, Fren Kontrolü..." value={formValues.service} onChange={(e) => setFormValues(prev => ({ ...prev, service: e.target.value }))} className={`w-full p-5 bg-[var(--bg-main)]/50 backdrop-blur-sm border rounded-2xl text-[var(--text-primary)] font-bold outline-none h-32 resize-none focus:ring-4 focus:ring-[var(--accent)]/5 transition-all ${errorFields.includes('service') ? 'border-red-500/50' : 'border-[var(--border-soft)] focus:border-[var(--accent)]'}`} />
                             </div>
                         </div>
-                        <div className="mt-auto pt-4">
-                            {error && <p className="text-xs font-bold text-red-400 mb-4 animate-pulse">{error}</p>}
-                            <button onClick={handleSubmit} disabled={isSaving} className="w-full p-5 bg-[var(--accent)] text-white font-black rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_10px_20px_rgba(37,99,235,0.18)] uppercase tracking-widest text-sm disabled:opacity-70 disabled:cursor-not-allowed">{isSaving ? 'KAYDEDİLİYOR...' : 'Randevuyu Takvime Ekle'}</button>
+
+                        <div className="pt-6">
+                            {error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl mb-4 flex items-center gap-3 text-red-500 text-xs font-bold animate-shake">⚠️ {error}</div>}
+                            <button onClick={handleSubmit} disabled={isSaving} className="w-full h-16 bg-gradient-to-r from-[var(--accent)] to-teal-500 text-white font-black rounded-2xl hover:scale-[1.01] hover:brightness-110 active:scale-[0.99] transition-all shadow-xl shadow-[var(--accent)]/20 uppercase tracking-[0.2em] text-sm disabled:opacity-50">
+                                {isSaving ? 'Kaydediliyor...' : 'Randevuyu Onayla ve Ekle'}
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
+
+            <div className="bg-[var(--bg-card)]/40 backdrop-blur-md p-6 rounded-3xl border border-[var(--border-soft)] mb-10 group transition-all duration-500 hover:shadow-2xl relative z-30">
+                <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
+                    <div className="flex-1 w-full relative">
+                        <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                            <svg className="w-6 h-6 text-gray-500 group-focus-within:text-[var(--accent)] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Plaka, İsim veya Marka ile hızlı ara..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full h-16 pl-14 pr-12 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-[1.25rem] text-base text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all font-bold placeholder:text-gray-500 shadow-inner"
+                        />
+                        {search && (
+                            <button
+                                onClick={() => setSearch('')}
+                                className="absolute inset-y-0 right-0 pr-5 flex items-center text-gray-500 hover:text-[var(--accent)] transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+
+                        {/* Arama Sonuçları Dropdown */}
+                        {search && (
+                            <div className="absolute z-50 w-full mt-2 bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                {(appointments || [])
+                                    .filter(app => app && getAppointmentStatus(app).status !== 'CONVERTED')
+                                    .filter(app => 
+                                        (app.plate || '').toLowerCase().includes(search.toLowerCase()) || 
+                                        (app.customer || '').toLowerCase().includes(search.toLowerCase()) ||
+                                        (app.brand || '').toLowerCase().includes(search.toLowerCase())
+                                    ).length > 0 ? (
+                                        <ul className="py-2">
+                                            {(appointments || [])
+                                                .filter(app => app && getAppointmentStatus(app).status !== 'CONVERTED')
+                                                .filter(app => 
+                                                    (app.plate || '').toLowerCase().includes(search.toLowerCase()) || 
+                                                    (app.customer || '').toLowerCase().includes(search.toLowerCase()) ||
+                                                    (app.brand || '').toLowerCase().includes(search.toLowerCase())
+                                                )
+                                                .map(app => (
+                                                    <li 
+                                                        key={app.id} 
+                                                        onClick={() => setSearch(app.plate)}
+                                                        className="px-6 py-4 hover:bg-[var(--accent)]/10 cursor-pointer transition-all border-b border-[var(--border-soft)]/30 last:border-0 flex items-center justify-between group/item"
+                                                    >
+                                                        <div>
+                                                            <p className="text-[var(--text-primary)] font-black text-sm group-hover/item:text-[var(--accent)]">{app.plate}</p>
+                                                            <p className="text-xs text-gray-500 font-bold mt-0.5">{app.customer} • {app.brand}</p>
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-gray-400 bg-gray-500/10 px-2 py-1 rounded uppercase tracking-widest">{formatDateTime(app.time).split(' ')[0]}</span>
+                                                    </li>
+                                                ))
+                                            }
+                                        </ul>
+                                    ) : (
+                                        <div className="px-6 py-8 text-center text-gray-500 text-sm font-bold">Eşleşen randevu bulunamadı.</div>
+                                    )
+                                }
+                            </div>
+                        )}
+                    </div>
+
+
+                    <div className="flex items-center gap-4 w-full lg:w-auto">
+                        <div className="relative flex-1 lg:w-64">
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                                className="w-full h-16 px-6 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-[1.25rem] text-sm font-black text-[var(--text-primary)] outline-none appearance-none cursor-pointer hover:border-[var(--accent)] transition-all shadow-inner"
+                            >
+                                <option value="date">Tarihe Göre</option>
+                                <option value="name">İsime Göre</option>
+
+                            </select>
+                            <span className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50 text-xs">▼</span>
+                        </div>
+                        <div className="h-16 px-8 bg-[var(--accent)] text-white rounded-[1.25rem] flex items-center gap-2 shadow-lg shadow-[var(--accent)]/20 font-black text-xs uppercase tracking-[0.1em]">
+                            <span className="opacity-70">Toplam:</span>
+                            <span className="text-lg">{appointments.length}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {appointments
-                    .map(app => ({ ...app, _status: getAppointmentStatus(app).status }))
-                    .filter(app => app._status !== 'CONVERTED')
-                    .length > 0 ? appointments
-                        .map(app => ({ ...app, _status: getAppointmentStatus(app).status }))
-                        .filter(app => app._status !== 'CONVERTED')
-                        .map((app) => (
-                            <div key={app.id} className={`group p-5 rounded-2xl bg-[var(--bg-card)] border-l-8 transition-all hover:scale-[1.02] shadow-xl ${app.type === 'green' ? 'border-[var(--success)]' : 'border-[var(--danger)]'}`}>
-                                <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                        <span className="text-gray-500 text-[10px] font-black uppercase tracking-widest block mb-1 opacity-70">{formatDateTime(app.time)}</span>
-                                        <h3 className="text-2xl font-black text-[var(--text-primary)] tracking-tighter">{app.plate}</h3>
+                {(appointments || [])
+                    .map(app => app ? ({ ...app, _status: getAppointmentStatus(app)?.status || 'PENDING' }) : null)
+                    .filter(app => app && app._status !== 'CONVERTED')
+                    .filter(app => 
+                        (app.plate || '').toLowerCase().includes(search.toLowerCase()) || 
+                        (app.customer || '').toLowerCase().includes(search.toLowerCase()) ||
+                        (app.brand || '').toLowerCase().includes(search.toLowerCase())
+                    )
+                    .sort((a, b) => {
+                        if (sortBy === 'date') return new Date(a.time) - new Date(b.time);
+                        return (a.customer || '').localeCompare(b.customer || '');
+                    })
+                    .map((app) => {
+                        const isApproved = app.statusKey === 'APPROVED';
+                        const isOverdue = new Date(app.time) < new Date() && app._status === 'PENDING';
+                        return (
+
+                            <div key={app.id} className={`group relative p-6 rounded-[2rem] border transition-all duration-500 hover:scale-[1.02] hover:-translate-y-1 shadow-xl overflow-hidden ${isOverdue ? 'bg-red-500/10 border-red-500/30 ring-4 ring-red-500/5' : isApproved ? 'bg-green-500/10 border-green-500/30' : 'bg-[var(--bg-card)]/60 backdrop-blur-md border-[var(--border-soft)] hover:bg-[var(--bg-card)]'}`}>
+
+                                {isOverdue && <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-16 -mt-16 blur-2xl animate-pulse" />}
+                                
+                                <div className="flex justify-between items-start mb-5 relative z-10">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 bg-gray-500/10 px-2 py-1 rounded-md">{formatDateTime(app.time).split(' ')[0]}</span>
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)] bg-[var(--accent)]/10 px-2 py-1 rounded-md">{formatDateTime(app.time).split(' ')[1]}</span>
+                                        </div>
+                                        <h3 className="text-3xl font-black text-[var(--text-primary)] tracking-tighter mt-2 group-hover:text-[var(--accent)] transition-colors">{app.plate}</h3>
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-[9px] font-black border uppercase tracking-tighter ${app.type === 'green' ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]' : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]'}`}>{app.status}</span>
-                                </div>
-                                <div className="space-y-1 mb-4">
-                                    <p className="text-gray-300 font-semibold text-sm">{app.customer}</p>
-                                    <p className="text-gray-500 text-xs">{app.service}</p>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black border uppercase tracking-widest shadow-sm ${app.color === 'green' ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20' : app.color === 'amber' ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/20' : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/20'}`}>{app.statusLabel || app.status}</span>
+                                        {(app.createdBy === null || app.createdBy === 0) && (
+                                            <span className="bg-blue-600/10 text-blue-500 border border-blue-600/20 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest animate-bounce-subtle">Web Talebi</span>
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="flex gap-2 mt-3 pt-3 border-t border-[var(--border-strong)]/30">
-                                    {app.status === 'ONAY BEKLİYOR' ? (
-                                        <button onClick={() => approveAppointment(app.id)} className="flex-1 py-2 bg-[var(--accent)] text-white font-black rounded-lg hover:brightness-110 transition-all text-xs uppercase tracking-widest shadow-md">ONAYLA</button>
-                                    ) : (
-                                        <button onClick={() => handleOpenJobOrder(app)} className="flex-1 py-2 bg-[var(--border-strong)] text-[var(--text-primary)] font-black rounded-lg hover:bg-[var(--accent)] hover:text-white transition-all text-xs uppercase tracking-widest shadow-md">IS EMRI AC</button>
-                                    )}
-                                    <button onClick={() => setDeleteModal({ isOpen: true, id: app.id, plate: app.plate })} className="px-4 py-2 bg-transparent border border-[var(--danger)]/50 text-[var(--danger)] font-black rounded-lg hover:bg-[var(--danger)] hover:text-[var(--text-primary)] transition-all text-xs uppercase tracking-widest">SIL</button>
+                                <div className="space-y-2 mb-6 p-4 bg-[var(--bg-main)]/40 rounded-2xl relative z-10 border border-[var(--border-soft)]/50">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-[var(--text-primary)] font-black text-sm">{app.customer}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-gray-500 font-bold text-[11px] leading-relaxed uppercase tracking-tight line-clamp-2">{app.service}</p>
+                                    </div>
                                 </div>
+
+
+                                <div className="flex gap-2 relative z-10">
+                                    {app.statusKey === 'PENDING' ? (
+                                        <button onClick={() => approveAppointment(app.id)} className="flex-1 h-12 bg-[var(--accent)] text-white font-black rounded-xl hover:brightness-110 transition-all text-[10px] uppercase tracking-widest shadow-lg shadow-[var(--accent)]/10">ONAYLA</button>
+                                    ) : (
+                                        <button onClick={() => handleOpenJobOrder(app)} className="flex-1 h-12 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black rounded-xl hover:brightness-110 active:scale-[0.98] transition-all text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20">İŞ EMRİ AÇ</button>
+                                    )}
+
+                                    <button onClick={() => setReviseModal({ isOpen: true, id: app.id, plate: app.plate, time: app.time, notes: '' })} className="px-4 h-12 flex items-center justify-center bg-amber-500/10 border border-amber-500/30 text-amber-600 font-black rounded-xl hover:bg-amber-500 hover:text-white transition-all text-[10px] uppercase tracking-widest" title="Revize Et">REVİZE ET</button>
+                                    <button onClick={() => setDeleteModal({ isOpen: true, id: app.id, plate: app.plate })} className="px-4 h-12 flex items-center justify-center bg-red-500 border border-red-600 text-white font-black rounded-xl hover:bg-red-600 transition-all text-[10px] uppercase tracking-widest" title="Sil">SİL</button>
+                                </div>
+
+                                
+                                <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 group-hover:h-2 ${app.color === 'green' ? 'bg-[var(--success)] w-full' : app.color === 'amber' ? 'bg-[var(--accent)] w-full' : 'bg-[var(--danger)] w-full'}`} />
                             </div>
-                        )) : (
-                    <div className="col-span-full text-center py-20 bg-[var(--bg-card)]/30 rounded-3xl border border-dashed border-[var(--border-strong)]">
-                        <p className="text-gray-500 font-medium">Henuz kayitli bir randevu bulunmuyor.</p>
+                        );
+                    })}
+                {(appointments || []).filter(app => app && getAppointmentStatus(app).status !== 'CONVERTED').length === 0 && (
+                    <div className="col-span-full text-center py-20 bg-[var(--bg-card)]/30 rounded-3xl border border-dashed border-[var(--border-soft)]">
+                        <p className="text-gray-500 font-medium">Henüz kayıtlı bir randevu bulunmuyor.</p>
                     </div>
                 )}
             </div>
+
 
             {/* Ozel Silme Onay Pop-up'i (Modal) */}
             {deleteModal.isOpen && (
@@ -316,6 +481,48 @@ export default function Appointments() {
                     </div>
                 </div>
             )}
+
+            {/* Revize Modali */}
+            {reviseModal.isOpen && (
+                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+                    <div className="bg-[var(--bg-card)] p-8 rounded-2xl shadow-2xl border border-[var(--border-strong)] w-full max-w-md text-left animate-in zoom-in-95 duration-300">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 className="text-xl font-black text-[var(--text-primary)] uppercase tracking-widest">Randevu Revize</h3>
+                                <p className="text-gray-400 text-xs mt-1">{reviseModal.plate} plakalı araç için tarih güncelleme</p>
+                            </div>
+                            <button onClick={() => setReviseModal({ ...reviseModal, isOpen: false })} className="text-gray-500 hover:text-white">✕</button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Yeni Tarih & Saat</label>
+                                <input
+                                    type="datetime-local"
+                                    value={reviseModal.time}
+                                    onChange={(e) => setReviseModal({ ...reviseModal, time: e.target.value })}
+                                    className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-strong)] rounded-xl text-[var(--text-primary)] font-bold outline-none focus:border-[var(--accent)]"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">Revize Notu</label>
+                                <textarea
+                                    value={reviseModal.notes}
+                                    onChange={(e) => setReviseModal({ ...reviseModal, notes: e.target.value })}
+                                    placeholder="Revize sebebi veya müşteri talebi..."
+                                    className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-strong)] rounded-xl text-[var(--text-primary)] font-bold outline-none focus:border-[var(--accent)] h-32 resize-none"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 mt-8">
+                            <button onClick={() => setReviseModal({ ...reviseModal, isOpen: false })} className="flex-1 p-4 bg-transparent border border-[var(--border-strong)] text-[var(--text-primary)] font-black rounded-xl hover:bg-[var(--border-strong)] transition-all uppercase tracking-widest text-xs">VAZGEÇ</button>
+                            <button onClick={handleRevise} className="flex-1 p-4 bg-[var(--accent)] text-white font-black rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-lg uppercase tracking-widest text-xs">REVİZE ET</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

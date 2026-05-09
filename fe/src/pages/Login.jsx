@@ -109,6 +109,12 @@ export default function Login() {
                     >
                         Yeni Arac Kabul Formu
                     </Link>
+                    <Link
+                        to="/"
+                        className="block w-full text-center text-xs font-bold uppercase tracking-[0.16em] text-gray-500 hover:text-[var(--accent)] transition-all mt-4"
+                    >
+                        ← Ana Sayfaya Dön
+                    </Link>
                 </div>
             </form>
         </div>

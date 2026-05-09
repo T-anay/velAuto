@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import PublicAppointment from './pages/PublicAppointment';
 import Dashboard from './pages/Dashboard';
@@ -13,7 +14,6 @@ import Profile from './pages/Profile';
 import Expenses from './pages/Expenses';
 import Staff from './pages/Staff';
 import AppointmentsAdmin from './pages/AppointmentsAdmin';
-import IncomingAppointments from './pages/IncomingAppointments';
 import AIAnalysis from './pages/AIAnalysis';
 import AISettings from './pages/AISettings';
 import AuditLogs from './pages/AuditLogs';
@@ -25,8 +25,10 @@ import ToastHost from './components/ToastHost';
 function AppContent() {
   const location = useLocation();
   const { user, isBootstrapping } = useService();
-  const publicPages = ['/', '/public-appointment'];
-  const isLoginPage = publicPages.includes(location.pathname);
+  const publicPages = ['/', '/login', '/public-appointment'];
+  const isLoginPage = location.pathname === '/login';
+  const isPublicPage = publicPages.includes(location.pathname);
+  const isLandingPage = location.pathname === '/';
 
   if (isBootstrapping) {
     return (
@@ -39,24 +41,25 @@ function AppContent() {
     );
   }
 
-  if (!user && !isLoginPage) return <Navigate to="/" replace />;
-  if (user && isLoginPage) return <Navigate to="/dashboard" replace />;
+  if (!user && !isPublicPage) return <Navigate to="/" replace />;
+  if (user && isPublicPage) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-main)] text-[var(--text-primary)] font-sans">
       <ToastHost />
-      {!isLoginPage && <Sidebar />}
-      <main className={`flex-1 overflow-y-auto ${isLoginPage ? 'flex items-center justify-center p-6' : 'p-6 md:p-8'}`}>
+      {!isPublicPage && <Sidebar />}
+      <main className={`flex-1 overflow-y-auto ${isLoginPage ? 'flex items-center justify-center p-6' : isLandingPage ? '' : 'p-6 md:p-8'}`}>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/public-appointment" element={<PublicAppointment />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/vehicle-entry" element={<VehicleEntry />} />
           <Route path="/active-jobs" element={<ActiveJobs />} />
           <Route path="/job-detail/:id" element={<JobOrderDetail />} />
           <Route path="/appointments" element={<Appointments />} />
-          <Route path="/incoming-appointments" element={<IncomingAppointments />} />
           <Route path="/customers" element={<Customers />} />
+
           <Route path="/cashier" element={<Cashier />} />
           <Route path="/profil" element={<Profile />} />
           <Route path="/giderler" element={<Expenses />} />

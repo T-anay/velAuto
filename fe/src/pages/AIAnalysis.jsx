@@ -16,14 +16,21 @@ export default function AIAnalysis() {
   const [isRunning, setIsRunning] = useState(false);
 
   const runAnalysis = async () => {
+    if (!brand) {
+      pushToast({ type: 'warning', title: 'Marka Seçin', message: 'Analiz için araç markası gereklidir.' });
+      return;
+    }
+
     setIsRunning(true);
-    const next = [];
+    setAiReport('');
+    setRemoteSuggestions([]);
 
     try {
+      const next = [];
       if (uploadedFiles.length > 0) {
         const formData = new FormData();
         formData.append('image', uploadedFiles[0]);
-        formData.append('description', complaintText || `${brand} ${model} arac kontrolu`);
+        formData.append('description', complaintText || `${brand} ${model} araç kontrolü`);
 
         const response = await fetch('http://localhost:8000/analyze-damage', {
           method: 'POST',
@@ -53,21 +60,20 @@ export default function AIAnalysis() {
           setAiReport(data.ai_analysis_report);
         }
       }
+      setRemoteSuggestions(next);
+      setAnalysisRunAt(new Date().toLocaleString('tr-TR'));
+      pushToast({ type: 'success', title: 'Analiz Tamamlandı', message: 'Yapay zeka usta raporu hazır.' });
     } catch (err) {
-      console.error('AI Analiz hatasi:', err);
-      pushToast({ type: 'error', title: 'Analiz Hatasi', message: 'AI servisi calismiyor olabilir.' });
+      console.error('AI Analiz hatası:', err);
+      pushToast({ type: 'error', title: 'Analiz Hatası', message: 'AI servisi şu an yanıt vermiyor.' });
+    } finally {
+      setIsRunning(false);
     }
-
-    setRemoteSuggestions(next);
-    setAnalysisRunAt(new Date().toLocaleString('tr-TR'));
-    setIsRunning(false);
-    pushToast({ type: 'success', title: 'Analiz tamamlandi', message: next.length ? 'Lokal AI yaniti alindi.' : 'Fallback eslestirme kullanildi.' });
   };
 
   const tier = getBrandTier(brand);
 
   const estimatedPrice = useMemo(() => {
-    // Collect all unique categories from suggestions
     const categories = new Set();
     remoteSuggestions.forEach((s) => {
       if (s.type === 'YOLO') {
@@ -75,154 +81,154 @@ export default function AIAnalysis() {
       }
     });
 
-    // Fallback: If no YOLO detections, try matching from AI report text or complaint
     if (categories.size === 0) {
       const textToScan = (aiReport + ' ' + complaintText).toLowerCase();
       mapDamageToCatalog(textToScan).forEach((c) => categories.add(c));
     }
 
-    // Sum base prices
     let baseTotal = 0;
     categories.forEach((cat) => {
       baseTotal += damagePrices[cat] || 0;
     });
 
-    // If still 0, use a generic base price
-    if (baseTotal === 0) baseTotal = 1000;
+    if (baseTotal === 0 && (aiReport || complaintText)) baseTotal = 1000;
 
     return applyBrandMultiplier(baseTotal, brand);
   }, [remoteSuggestions, aiReport, complaintText, brand]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <BackButton />
-      <div>
-        <p className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-muted)] font-black">YOLO + Ollama + Fallback</p>
-        <h1 className="text-3xl font-black text-[var(--text-primary)] mt-2">Akilli Teshis ve AI Analizi</h1>
+      <div className="flex items-center justify-between">
+        <BackButton />
+        <div className="flex items-center gap-3">
+          <span className="w-3 h-3 rounded-full bg-[var(--accent)] animate-pulse" />
+          <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-widest">AI Service Online</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-black text-[var(--text-primary)]">Arac ve Sikayet Bilgileri</h2>
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-muted)] font-black">Admin Panel / Akıllı Teşhis</p>
+        <h1 className="text-4xl font-black text-[var(--text-primary)] mt-2 tracking-tight">AI Hasar Analizi ve Raporlama</h1>
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-            <select
-              value={brand}
-              onChange={(e) => { setBrand(e.target.value); setModel(''); }}
-              className="p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-xl text-[var(--text-primary)] outline-none"
-            >
-              <option value="">Marka Secin</option>
-              {Object.keys(carBrands).sort().map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Input Section */}
+        <section className="xl:col-span-1 space-y-6">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-[32px] p-8 shadow-xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 blur-3xl rounded-full" />
+            <h2 className="text-xl font-black text-[var(--text-primary)] mb-6 flex items-center gap-3">
+              <span className="w-8 h-8 rounded-lg bg-[var(--bg-main)] border border-[var(--border-soft)] flex items-center justify-center text-lg"></span>
+              Araç Bilgileri
+            </h2>
 
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              disabled={!brand}
-              className="p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-xl text-[var(--text-primary)] outline-none disabled:opacity-50"
-            >
-              <option value="">Model Secin</option>
-              {(carBrands[brand] || []).sort().map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={brand}
+                  onChange={(e) => { setBrand(e.target.value); setModel(''); }}
+                  className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-2xl text-[var(--text-primary)] font-bold outline-none focus:border-[var(--accent)] transition-all cursor-pointer"
+                >
+                  <option value="">Marka</option>
+                  {Object.keys(carBrands).sort().map((b) => <option key={b} value={b}>{b}</option>)}
+                </select>
+
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  disabled={!brand}
+                  className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-2xl text-[var(--text-primary)] font-bold outline-none focus:border-[var(--accent)] transition-all cursor-pointer disabled:opacity-30"
+                >
+                  <option value="">Model</option>
+                  {(carBrands[brand] || []).sort().map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              <textarea
+                value={complaintText}
+                onChange={(e) => setComplaintText(e.target.value)}
+                className="w-full p-5 rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-main)] min-h-[120px] text-sm font-medium outline-none focus:border-[var(--accent)] transition-all"
+                placeholder="Müşteri şikayeti veya teknik notlar..."
+              />
+
+              <div className="relative group">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setUploadedFiles(Array.from(e.target.files || []))}
+                  className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
+                />
+                <div className={`p-6 border-2 border-dashed rounded-2xl text-center transition-all ${uploadedFiles.length > 0 ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border-soft)] bg-[var(--bg-main)] group-hover:border-[var(--accent)]/50'}`}>
+                  {uploadedFiles.length > 0 ? (
+                    <div className="space-y-1">
+                      <p className="text-[var(--accent)] font-black text-[10px] uppercase">Görsel Seçildi</p>
+                      <p className="text-xs font-bold text-[var(--text-primary)] truncate">{uploadedFiles[0].name}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-2xl mb-1">📸</p>
+                      <p className="text-[var(--text-muted)] font-black text-[10px] uppercase tracking-widest">Hasar Fotoğrafı</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={runAnalysis}
+                disabled={isRunning || !brand}
+                className="w-full p-5 rounded-2xl bg-[var(--accent)] text-black font-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-[var(--accent)]/20 disabled:opacity-50 mt-4"
+              >
+                {isRunning ? 'ANALİZ EDİLİYOR...' : 'AI ANALİZİNİ BAŞLAT'}
+              </button>
+            </div>
           </div>
+        </section>
 
-          <textarea
-            value={complaintText}
-            onChange={(e) => setComplaintText(e.target.value)}
-            className="w-full mt-3 p-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] min-h-24"
-            placeholder="Musteri sikayeti veya notlar (istege bagli)..."
-          />
+        {/* Results Section */}
+        <section className="xl:col-span-2 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* AI Report Card */}
+            <div className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-[32px] p-8 shadow-xl min-h-[400px] flex flex-col">
+              <h2 className="text-xl font-black text-[var(--text-primary)] mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center text-lg"></span>
+                AI Raporu
+              </h2>
 
-          <div className="mt-3 relative">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setUploadedFiles(Array.from(e.target.files || []))}
-              className="absolute inset-0 opacity-0 cursor-pointer z-10"
-            />
-            <div className="p-4 border-2 border-dashed border-[var(--border-soft)] rounded-xl text-center hover:border-[var(--accent)] transition-all bg-[var(--bg-main)]">
-              {uploadedFiles.length > 0 ? (
-                <span className="text-[var(--accent)] font-bold">{uploadedFiles[0].name} secildi</span>
+              {aiReport ? (
+                <div className="flex-1 animate-in fade-in zoom-in duration-500">
+                  <div className="p-6 bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-[24px] relative">
+                    <div className="absolute -top-3 -left-3 text-4xl opacity-10">"</div>
+                    <div className="text-[var(--text-primary)] font-bold text-lg leading-relaxed italic whitespace-pre-wrap">
+                      {aiReport}
+                    </div>
+                  </div>
+
+                  <div className="mt-8 space-y-3">
+                    {remoteSuggestions.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 bg-[var(--bg-main)] rounded-2xl border border-[var(--border-soft)]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                          <span className="text-sm font-bold">{item.label}</span>
+                        </div>
+                        <span className="text-xs font-black text-[var(--accent)]">%{item.confidence}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ) : (
-                <span className="text-[var(--text-muted)] text-sm font-bold">+ Hasar Fotografini Yukle</span>
+                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30 grayscale">
+                  <div className="text-6xl mb-4">⚙️</div>
+                  <p className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest">Analiz Sonucu Bekleniyor</p>
+                </div>
               )}
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={runAnalysis}
-            disabled={isRunning || !brand}
-            className="mt-4 w-full p-4 rounded-xl bg-[var(--accent)] text-white font-black hover:brightness-110 transition-all disabled:opacity-50 shadow-lg"
-          >
-            {isRunning ? 'AI ANALIZ EDIYOR...' : 'AI ANALIZINI BASLAT'}
-          </button>
-        </section>
-
-        <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-black text-[var(--text-primary)]">Fiyat Carpani</h2>
-          <div className="mt-4 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] p-5">
-            <p className="text-sm text-[var(--text-secondary)]">Sinif: <span className="font-black text-[var(--text-primary)]">{tier.label}</span></p>
-            <p className="text-sm text-[var(--text-secondary)] mt-2">Carpan: <span className="font-black text-[var(--accent)]">x{tier.multiplier}</span></p>
-            <p className="text-3xl font-black text-[var(--accent)] mt-4">{estimatedPrice.toLocaleString('tr-TR')} TL</p>
-            <p className="text-xs text-[var(--text-secondary)] mt-1">1000 TL baz fiyat ornegi</p>
-          </div>
-          <p className="text-sm text-[var(--text-secondary)] mt-4">{analysisRunAt ? `Son analiz: ${analysisRunAt}` : 'Analiz henuz calistirilmadi'}</p>
-        </section>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-black text-[var(--text-primary)] mb-4">AI Tespit Sonuclari</h2>
-
-          {aiReport ? (
-            <div className="p-5 bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-2xl">
-              <p className="text-[10px] uppercase tracking-widest font-black text-[var(--accent)] mb-2">AI Usta Raporu</p>
-              <div className="text-[var(--text-primary)] font-bold whitespace-pre-wrap leading-7 italic">
-                "{aiReport}"
-              </div>
-            </div>
-          ) : (
-            <div className="p-10 text-center border-2 border-dashed border-[var(--border-soft)] rounded-2xl text-[var(--text-muted)] font-bold">
-              Henuz analiz yapilmadi
+          {analysisRunAt && (
+            <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+              Son Başarılı Analiz: {analysisRunAt}
             </div>
           )}
-
-          <div className="mt-6 space-y-3">
-            {remoteSuggestions.map((item) => (
-              <div key={`${item.type}-${item.label}`} className="flex items-center justify-between p-3 bg-[var(--bg-main)] rounded-xl border border-[var(--border-soft)]">
-                <div>
-                  <span className="text-[9px] uppercase font-black text-[var(--text-muted)] tracking-tighter">TESPIT</span>
-                  <p className="text-sm font-bold text-[var(--text-primary)]">{item.label}</p>
-                </div>
-                <span className="text-xs font-black text-[var(--accent)]">%{item.confidence}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-2xl p-6 shadow-xl">
-          <h2 className="text-xl font-black text-[var(--text-primary)] mb-4">Maliyet Tahmini</h2>
-          <div className="rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-main)] p-6">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-sm text-[var(--text-secondary)] font-bold">Arac Segmenti:</span>
-              <span className="px-3 py-1 bg-[var(--accent)]/10 text-[var(--accent)] rounded-lg text-xs font-black uppercase">{tier.label}</span>
-            </div>
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-sm text-[var(--text-secondary)] font-bold">Fiyat Carpani:</span>
-              <span className="text-lg font-black text-[var(--text-primary)]">x{tier.multiplier}</span>
-            </div>
-
-            <div className="pt-6 border-t border-[var(--border-soft)]">
-              <p className="text-xs text-[var(--text-muted)] font-black uppercase tracking-widest mb-1">Tahmini Servis Tutari</p>
-              <p className="text-5xl font-black text-[var(--accent)] tracking-tighter">
-                {estimatedPrice.toLocaleString('tr-TR')} <span className="text-2xl">TL</span>
-              </p>
-              <p className="text-[10px] text-[var(--text-muted)] mt-4 leading-4">
-                * Bu fiyat yapay zeka tarafindan tespit edilen hasarlar ve parca carpanlari uzerinden tahmin edilmistir. Kesin tutar usta kontrolu sonrasi netlesir.
-              </p>
-            </div>
-          </div>
         </section>
       </div>
     </div>
