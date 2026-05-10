@@ -5,6 +5,7 @@ public enum AppointmentStatus {
   APPROVED("Onaylandı"),
   REVISED("Revize Edildi"),
   COMPLETED("Tamamlandı"),
+  CONVERTED("İş Emrine Dönüştü"),
   CANCELLED("İptal Edildi");
 
   private final String displayName;

@@ -9,7 +9,6 @@ import ActiveJobs from './pages/ActiveJobs';
 import JobOrderDetail from './pages/JobOrderDetail';
 import Appointments from './pages/Appointments';
 import Customers from './pages/Customers';
-import Cashier from './pages/Cashier';
 import Profile from './pages/Profile';
 import Expenses from './pages/Expenses';
 import Staff from './pages/Staff';
@@ -44,6 +43,9 @@ function AppContent() {
   if (!user && !isPublicPage) return <Navigate to="/" replace />;
   if (user && isPublicPage) return <Navigate to="/dashboard" replace />;
 
+  const userRole = String(user?.role || '').toUpperCase();
+  const isElevated = userRole.includes('ADMIN') || userRole.includes('SUPERADMIN');
+
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg-main)] text-[var(--text-primary)] font-sans">
       <ToastHost />
@@ -60,16 +62,18 @@ function AppContent() {
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/customers" element={<Customers />} />
 
-          <Route path="/cashier" element={<Cashier />} />
           <Route path="/profil" element={<Profile />} />
-          <Route path="/giderler" element={<Expenses />} />
-          <Route path="/personel" element={<Staff />} />
-          <Route path="/randevular" element={<AppointmentsAdmin />} />
+          
+          {/* Admin Only Routes */}
+          <Route path="/giderler" element={isElevated ? <Expenses /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/personel" element={isElevated ? <Staff /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/randevular" element={isElevated ? <AppointmentsAdmin /> : <Navigate to="/dashboard" replace />} />
           <Route path="/ai-analiz" element={<AIAnalysis />} />
-          <Route path="/ai-ayarlari" element={<AISettings />} />
-          <Route path="/sistem-kayitlari" element={<AuditLogs />} />
+          <Route path="/ai-ayarlari" element={isElevated ? <AISettings /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/sistem-kayitlari" element={isElevated ? <AuditLogs /> : <Navigate to="/dashboard" replace />} />
           <Route path="/bildirimler" element={<Notifications />} />
-          <Route path="/faturalar" element={<Invoices />} />
+          <Route path="/faturalar" element={isElevated ? <Invoices /> : <Navigate to="/dashboard" replace />} />
+          
           <Route path="*" element={<Navigate to={user ? '/dashboard' : '/'} replace />} />
         </Routes>
       </main>

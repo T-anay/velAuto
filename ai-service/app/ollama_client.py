@@ -17,8 +17,7 @@ class OllamaClient:
         user_prompt = (
             f"Tespit Edilen Hasarlar: [{detected_damages_text}], "
             f"Müşteri Şikayeti: [{customer_description}]. "
-            "Yalnizca Turkce yaz. Cok kisa yaz. "
-            "Tam olarak 3 satirlik formatta cevap ver."
+            "Lütfen sistem talimatlarına uygun olarak analiz et."
         )
 
         payload = {
@@ -26,7 +25,7 @@ class OllamaClient:
             "prompt": user_prompt,
             "system": SYSTEM_PROMPT,
             "stream": False,
-            "options": {"temperature": 0.2},
+            "options": {"temperature": 0.4, "num_predict": 500, "repeat_penalty": 1.1, "top_k": 40},
         }
 
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
@@ -40,23 +39,16 @@ class OllamaClient:
     async def generate_text_report(self, customer_description: str) -> str:
         user_prompt = (
             f"Müşteri Şikayeti: [{customer_description}]. "
-            "Bu metinden olasi araç arızasını veya hasar tipini çıkar. "
-            "Yalnizca Turkce yaz. "
-            "Ayni formatta, 3 kisa cumle ver. "
-            "Birinci cumle tespit sonucunu, ikinci cumle cozum onerini, ucuncu cumle usta gorusunu icersin. "
-            "Maddeleme, numaralandirma ve baslik kullanma."
+            "Lütfen farklı mekanik sistemleri (elektrik, ateşleme, yakıt, mekanik) değerlendirerek, "
+            "sistem talimatlarına uygun olarak 3 farklı ihtimal içeren detaylı bir arıza teşhisi yap."
         )
 
         payload = {
             "model": self.model,
             "prompt": user_prompt,
-            "system": (
-                "Sen VelAuto servis asistanısın. Cevap dili HER ZAMAN Turkce olacak. "
-                "Sadece uc kisa cumle ver. Numaralandirma ve baslik kullanma. "
-                "Birinci cumle tespit sonucunu, ikinci cumle cozum onerini, ucuncu cumle usta gorusunu icersin."
-            ),
+            "system": SYSTEM_PROMPT,
             "stream": False,
-            "options": {"temperature": 0.2},
+            "options": {"temperature": 0.4, "num_predict": 500, "repeat_penalty": 1.1, "top_k": 40},
         }
 
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
@@ -68,52 +60,24 @@ class OllamaClient:
         return self._normalize_text_report(raw)
 
     @staticmethod
-    def _normalize_report(text: str) -> str:
-        lines = [line.strip(" -\t") for line in text.replace("\r", "").split("\n") if line.strip()]
+    def _clamp(value: str, max_len: int) -> str:
+        return value if len(value) <= max_len else value[: max_len - 3].rstrip() + "..."
+
+    def _normalize_report(self, text: str) -> str:
+        # For image reports, we still try to keep it relatively clean but adapt to new labels
+        lines = [line.strip() for line in text.replace("\r", "").split("\n") if line.strip()]
         if not lines:
-            return "1) Kisa Ozet: Hasar ozeti alinmadi.\n2) Tahmini Islem: Gorsel kontrol tekrarlansin.\n3) Usta Notu: Araci serviste fiziksel inceleyin."
+            return (
+                "1) Arıza Teşhisleri (Olasılık Sırasıyla): Arıza tespit edilemedi.\n"
+                "2) Tahmini İşlem: Teknik kontrol gereklidir.\n"
+                "3) Usta Notu: Aracı servise getirin."
+            )
 
         compact = " ".join(lines)
-        sentence_parts = [part.strip() for part in compact.split(".") if part.strip()]
-        if not sentence_parts:
-            sentence_parts = [compact]
-
-        def clamp(value: str, max_len: int) -> str:
-            return value if len(value) <= max_len else value[: max_len - 3].rstrip() + "..."
-
-        s1 = clamp(sentence_parts[0], 90)
-        s2 = clamp(sentence_parts[1] if len(sentence_parts) > 1 else "Onarim icin kaporta ve boya kontrolu yapin", 90)
-        s3 = clamp(sentence_parts[2] if len(sentence_parts) > 2 else "Kesin karar icin usta fiziki kontrol yapsin", 90)
-
-        return f"1) Kisa Ozet: {s1}\n2) Tahmini Islem: {s2}\n3) Usta Notu: {s3}"
-
-    @staticmethod
-    def _normalize_text_report(text: str) -> str:
-        lines = [line.strip(" -\t") for line in text.replace("\r", "").split("\n") if line.strip()]
-        if not lines:
-            return "Hasar tespit edilemedi, usta incelemesi onerilir. Hasara uygun cozum icin teknik kontrol onerilir. Sonraki asamada usta gorusu ile detaylari girin."
-
-        cleaned_lines = []
-        for line in lines:
-            cleaned = line
-            cleaned = cleaned.lstrip("0123456789). ")
-            cleaned = cleaned.replace("Kisa Ozet:", "").replace("Kısa Özet:", "")
-            cleaned = cleaned.replace("Tahmini Islem:", "").replace("Tahmini İşlem:", "")
-            cleaned = cleaned.replace("Usta Notu:", "")
-            cleaned = cleaned.strip()
-            if cleaned:
-                cleaned_lines.append(cleaned)
-
-        if cleaned_lines:
-            lines = cleaned_lines
-
-        compact = re.sub(r"\*+", "", " ".join(lines))
-        compact = re.sub(r"\s+", " ", compact).strip()
-
         section_patterns = {
-            "s1": [r"(?:Tespit Sonucu|Kisa Ozet|Kısa Özet|Ozeti|Özeti)\s*[:\-]\s*(.*?)(?=\s*(?:Çözüm Önerisi|Cozum Onerisi|Tahmini Islem|Tahmini İşlem|Usta Notu)\s*[:\-]|$)"],
-            "s2": [r"(?:Çözüm Önerisi|Cozum Onerisi|Tahmini Islem|Tahmini İşlem|İşlem)\s*[:\-]\s*(.*?)(?=\s*(?:Usta Notu|Usta Gorusu|Usta Görüşü)\s*[:\-]|$)"],
-            "s3": [r"(?:Usta Notu|Usta Gorusu|Usta Görüşü|Usta Gorusu)\s*[:\-]\s*(.*)$"],
+            "s1": [r"(?:Arıza Teşhisleri|Arıza Teşhisi|Ariza Teshisi|Tespit Sonucu|Kisa Ozet|Kısa Özet)\s*(?:\(Olasılık Sırasıyla\))?\s*[:\-]\s*(.*?)(?=\s*(?:2\)|Tahmini İşlem|Tahmini Islem|İşlem|Çözüm Önerisi|Cozum Onerisi|Usta Notu)\s*[:\-]|$)"],
+            "s2": [r"(?:Tahmini İşlem|Tahmini Islem|İşlem|Çözüm Önerisi|Cozum Onerisi)\s*[:\-]\s*(.*?)(?=\s*(?:3\)|Usta Notu|Usta Gorusu|Usta Görüşü)\s*[:\-]|$)"],
+            "s3": [r"(?:Usta Notu|Usta Gorusu|Usta Görüşü)\s*[:\-]\s*(.*)$"],
         }
 
         extracted = {}
@@ -124,37 +88,71 @@ class OllamaClient:
                     extracted[key] = match.group(1).strip()
                     break
 
-        if extracted:
-            s1 = extracted.get("s1") or "Hasar tespit edilemedi, usta incelemesi onerilir"
-            s2 = extracted.get("s2") or "Hasara uygun cozum icin teknik kontrol onerilir"
-            s3 = extracted.get("s3") or "Sonraki asamada usta gorusu ile detaylari girin"
+        s1 = extracted.get("s1") or "Hasar tespiti yapılamadı"
+        s2 = extracted.get("s2") or "Gerekli kontrollerin yapılması önerilir"
+        s3 = extracted.get("s3") or "Arıza ilerlemeden servise başvurun"
 
-            return f"{s1.rstrip('.')} . {s2.rstrip('.')} . {s3.rstrip('.')} .".replace(" .", ".")
+        return f"1) Arıza Teşhisleri (Olasılık Sırasıyla): {s1}\n2) Tahmini İşlem: {s2}\n3) Usta Notu: {s3}"
 
-        def clean_line(line: str) -> str:
-            # Remove common prefixes and numbering
-            prefixes = [
-                "1)", "2)", "3)", 
-                "Kisa Ozet:", "Kısa Özet:", "Kisa Ozeti:", "Kısa Özeti:",
-                "Tahmini Islem:", "Tahmini İşlem:", "Islem:", "İşlem:",
-                "Usta Notu:", "Usta Gorusu:", "Usta Görüşü:",
-                "-", "*", ":"
-            ]
-            cleaned = line.strip()
-            for p in prefixes:
-                if cleaned.lower().startswith(p.lower()):
-                    cleaned = cleaned[len(p):].strip()
-            return cleaned
+    def _normalize_text_report(self, text: str) -> str:
+        # Preserve lines for the list structure in text reports
+        lines = [line.strip() for line in text.replace("\r", "").split("\n") if line.strip()]
+        if not lines:
+            return (
+                "1) Arıza Teşhisleri (Olasılık Sırasıyla): Belirtiler analiz edilemedi.\n"
+                "2) Tahmini İşlem: Detaylı mekanik kontrol önerilir.\n"
+                "3) Usta Notu: Arıza riskine karşı en kısa sürede kontrol ettirin."
+            )
 
-        cleaned_parts = [clean_line(p) for p in sentence_parts if clean_line(p)]
-        if not cleaned_parts:
-            cleaned_parts = [compact]
+        full_text = "\n".join(lines)
 
-        def clamp(value: str, max_len: int) -> str:
-            return value if len(value) <= max_len else value[: max_len - 3].rstrip() + "..."
+        # Regex to split into the 3 main sections, preserving internal newlines
+        # We handle both "Arıza Teşhisi" and "Arıza Teşhisleri" and optional "1)" prefix
+        s1_pattern = r"(?:1\)\s*)?(?:Arıza Teşhisleri|Arıza Teşhisi|Ariza Teshisleri|Ariza Teshisi|Tespit Sonucu).*?[:\-]\s*(.*?)(?=\n\s*(?:2\)|Tahmini İşlem|Tahmini Islem)|$)"
+        s2_pattern = r"(?:2\)\s*)?(?:Tahmini İşlem|Tahmini Islem|İşlem).*?[:\-]\s*(.*?)(?=\n\s*(?:3\)|Usta Notu|Usta Gorusu)|$)"
+        s3_pattern = r"(?:3\)\s*)?(?:Usta Notu|Usta Gorusu|Usta Görüşü).*?[:\-]\s*(.*)$"
 
-        s1 = clamp(cleaned_parts[0], 100)
-        s2 = clamp(cleaned_parts[1] if len(cleaned_parts) > 1 else "Hasara uygun cozum icin teknik kontrol onerilir", 100)
-        s3 = clamp(cleaned_parts[2] if len(cleaned_parts) > 2 else "Sonraki asamada usta gorusu ile detaylari girin", 100)
+        s1_match = re.search(s1_pattern, full_text, re.DOTALL | re.IGNORECASE)
+        s2_match = re.search(s2_pattern, full_text, re.DOTALL | re.IGNORECASE)
+        s3_match = re.search(s3_pattern, full_text, re.DOTALL | re.IGNORECASE)
 
-        return f"1) Kisa Ozet: {s1}\n2) Tahmini Islem: {s2}\n3) Usta Notu: {s3}"
+        s1 = s1_match.group(1).strip() if s1_match else ""
+        s2 = s2_match.group(1).strip() if s2_match else ""
+        s3 = s3_match.group(1).strip() if s3_match else ""
+
+        # Fallback if regex fails - try a simpler split
+        if not s1 or not s2:
+            parts = re.split(r"\n\s*\d+\)\s*", full_text)
+            if len(parts) >= 4: # split will include the part before "1)"
+                s1 = s1 or parts[1].strip()
+                s2 = s2 or parts[2].strip()
+                s3 = s3 or parts[3].strip()
+            elif len(parts) == 3:
+                s1 = s1 or parts[1].strip()
+                s2 = s2 or parts[2].strip()
+
+        # If still nothing, use clamp on the whole thing but with higher limit
+        if not s1:
+            s1 = self._clamp(full_text, 500)
+            s2 = s2 or "Detaylı teknik kontrol yapılması önerilir."
+            s3 = s3 or "Arızanın ilerlemesi durumunda maliyet artabilir, servise başvurun."
+
+        def clean_artifact(val: str) -> str:
+            # Remove brackets and placeholder-like phrases the AI sometimes repeats
+            val = re.sub(r"\[.*?\]", "", val)
+            val = val.replace("Burada nokta atışı parça adını ve nedenini yaz", "")
+            val = val.replace("En güçlü ihtimal için yapılacak ilk müdahale", "")
+            val = val.replace("Kritik güvenlik veya maliyet uyarısı", "")
+            val = val.replace("Müdahale detayını yaz", "")
+            val = val.replace("Güvenlik uyarısını yaz", "")
+            return val.strip()
+
+        s1 = clean_artifact(s1)
+        s2 = clean_artifact(s2)
+        s3 = clean_artifact(s3)
+
+        return (
+            f"1) Arıza Teşhisleri (Olasılık Sırasıyla):\n{s1}\n"
+            f"2) Tahmini İşlem: {s2}\n"
+            f"3) Usta Notu: {s3}"
+        )

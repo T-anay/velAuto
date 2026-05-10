@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,8 +19,11 @@ public class ServiceFormItemCreateDto {
   @NotNull(message = Messages.SERVICE_FORM_ITEM_SERVICE_FORM_ID_REQUIRED)
   private Integer serviceFormId;
 
-  @NotNull(message = Messages.SERVICE_FORM_ITEM_SERVICE_CATALOG_ID_REQUIRED)
   private Integer serviceCatalogId;
+
+  private String itemName;
+  private BigDecimal unitPrice;
+  private BigDecimal taxRate;
 
   @NotNull(message = Messages.SERVICE_FORM_ITEM_QUANTITY_REQUIRED)
   @Min(value = 1, message = Messages.SERVICE_FORM_ITEM_QUANTITY_MIN)
@@ -27,4 +32,3 @@ public class ServiceFormItemCreateDto {
 
   private ServiceFormItemStatus status;
 }
-

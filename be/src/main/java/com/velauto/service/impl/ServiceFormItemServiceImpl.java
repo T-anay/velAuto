@@ -42,12 +42,10 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
       ServiceFormItemCreateDto request,
       Integer userId
   ) {
-    // Guard Clause: Validate input
     if (request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    // Fetch ServiceForm - No Optional chaining
     Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(
         request.getServiceFormId()
     );
@@ -56,48 +54,49 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
     }
     ServiceForm serviceForm = serviceFormOptional.get();
 
-    // Guard Clause: ServiceForm is locked?
     if (serviceForm.getIsLocked() != null && serviceForm.getIsLocked()) {
       throw new BusinessException(Messages.SERVICE_FORM_LOCKED);
     }
-
-    // Guard Clause: ServiceForm is COMPLETED?
     if (serviceForm.getStatus() == ServiceFormStatus.COMPLETED) {
       throw new BusinessException(Messages.SERVICE_FORM_COMPLETED);
     }
-
-    // Guard Clause: ServiceForm deleted?
     if (serviceForm.getDeletedAt() != null) {
       throw new BusinessException(Messages.SERVICE_FORM_DELETED);
     }
 
-    // Fetch ServiceCatalog - No Optional chaining
-    Optional<ServiceCatalog> catalogOptional = serviceCatalogRepository.findByIdAndDeletedAtIsNull(
-        request.getServiceCatalogId()
-    );
-    if (catalogOptional.isEmpty()) {
-      throw new BusinessException(Messages.SERVICE_CATALOG_NOT_FOUND);
-    }
-    ServiceCatalog catalog = catalogOptional.get();
-
-    // Guard Clause: Catalog deleted?
-    if (catalog.getDeletedAt() != null) {
-      throw new BusinessException(Messages.SERVICE_CATALOG_DELETED);
+    // Catalog'dan veya DTO'dan bilgileri çek
+    ServiceCatalog catalog = null;
+    if (request.getServiceCatalogId() != null) {
+      catalog = serviceCatalogRepository.findByIdAndDeletedAtIsNull(request.getServiceCatalogId())
+          .orElseThrow(() -> new BusinessException(Messages.SERVICE_CATALOG_NOT_FOUND));
     }
 
-    // Map DTO to Entity
     ServiceFormItem item = serviceFormItemMapper.toServiceFormItem(request);
     item.setServiceFormId(request.getServiceFormId());
     item.setServiceCatalogId(request.getServiceCatalogId());
 
-    // SNAPSHOT RULE: Copy item name and tax rate from catalog (if catalog changes, invoice data remains stable)
-    item.setItemName(catalog.getName());
-    item.setTaxRate(catalog.getTaxRate());
-    item.setUnitPrice(catalog.getDefaultPrice());
+    BigDecimal unitPrice;
+    BigDecimal taxRate;
 
-    // Calculate lineTotal with tax: (unitPrice * quantity) + ((unitPrice * quantity) * (taxRate / 100))
-    BigDecimal unitPriceQuantity = catalog.getDefaultPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
-    BigDecimal taxAmount = unitPriceQuantity.multiply(catalog.getTaxRate()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+    if (catalog != null) {
+      item.setItemName(catalog.getName());
+      item.setTaxRate(catalog.getTaxRate());
+      item.setUnitPrice(catalog.getDefaultPrice());
+      unitPrice = catalog.getDefaultPrice();
+      taxRate = catalog.getTaxRate();
+    } else {
+      if (request.getItemName() == null || request.getUnitPrice() == null) {
+        throw new BusinessException("Katalog dışı işlemler için isim ve fiyat zorunludur.");
+      }
+      item.setItemName(request.getItemName());
+      item.setUnitPrice(request.getUnitPrice());
+      item.setTaxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO);
+      unitPrice = request.getUnitPrice();
+      taxRate = request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO;
+    }
+
+    BigDecimal unitPriceQuantity = unitPrice.multiply(BigDecimal.valueOf(request.getQuantity()));
+    BigDecimal taxAmount = unitPriceQuantity.multiply(taxRate).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
     BigDecimal lineTotal = unitPriceQuantity.add(taxAmount);
     item.setLineTotal(lineTotal);
 
@@ -107,10 +106,9 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
       item.setStatus(ServiceFormItemStatus.BEKLIYOR);
     }
 
-    // Save item
     ServiceFormItem savedItem = serviceFormItemRepository.save(item);
 
-    // Update ServiceForm totalAmount AND totalTax
+    // Toplam tutarları güncelle
     List<ServiceFormItem> allItems = serviceFormItemRepository.findByServiceFormIdAndDeletedAtIsNull(
         request.getServiceFormId()
     );
@@ -120,9 +118,8 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
 
     for (ServiceFormItem formItem : allItems) {
       totalAmount = totalAmount.add(formItem.getLineTotal());
-      // Calculate tax for this item: (unitPrice * quantity) * (taxRate / 100)
       BigDecimal itemUnitPriceQuantity = formItem.getUnitPrice().multiply(BigDecimal.valueOf(formItem.getQuantity()));
-      BigDecimal itemTax = itemUnitPriceQuantity.multiply(formItem.getTaxRate()).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+      BigDecimal itemTax = itemUnitPriceQuantity.multiply(formItem.getTaxRate() != null ? formItem.getTaxRate() : BigDecimal.ZERO).divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
       totalTax = totalTax.add(itemTax);
     }
 
@@ -132,15 +129,12 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
     serviceForm.setUpdatedAt(LocalDateTime.now());
     serviceFormRepository.save(serviceForm);
 
-    // Audit log
     String auditDetails = String.format(
-        "Servis formu kalemine oğe eklendi: serviceFormID=%d, catalogID=%d, quantity=%d, unitPrice=%s, lineTotal=%s, taxRate=%s",
+        "Servis formu kalemine öğe eklendi: serviceFormID=%d, name=%s, quantity=%d, lineTotal=%s",
         request.getServiceFormId(),
-        request.getServiceCatalogId(),
+        item.getItemName(),
         request.getQuantity(),
-        catalog.getDefaultPrice(),
-        lineTotal,
-        catalog.getTaxRate()
+        lineTotal
     );
     auditLogService.log(userId, "SERVICE_FORM_ITEM_ADDED", "SERVICE_FORM_ITEM", savedItem.getId(), auditDetails);
 
@@ -150,19 +144,14 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
   @Override
   @Transactional(readOnly = true)
   public ServiceFormItemResponseDto getItemById(Integer itemId) {
-    // Guard Clause: Validate input
     if (itemId == null) {
       throw new BusinessException(Messages.SERVICE_FORM_ITEM_NOT_FOUND);
     }
-
-    // Fetch item - No Optional chaining
     Optional<ServiceFormItem> itemOptional = serviceFormItemRepository.findByIdAndDeletedAtIsNull(itemId);
     if (itemOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_ITEM_NOT_FOUND);
     }
-
-    ServiceFormItem item = itemOptional.get();
-    return serviceFormItemMapper.toResponseDto(item);
+    return serviceFormItemMapper.toResponseDto(itemOptional.get());
   }
 
   @Override
@@ -171,11 +160,9 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
       Integer serviceFormId,
       Pageable pageable
   ) {
-    // Guard Clause: Validate input
     if (serviceFormId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
-
     Page<ServiceFormItem> items = serviceFormItemRepository.findByServiceFormIdAndDeletedAtIsNullPaged(
         serviceFormId,
         pageable
@@ -219,12 +206,10 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
 
   @Override
   public void deleteItem(Integer itemId, Integer userId) {
-    // Guard Clause: Validate input
     if (itemId == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    // Fetch item - No Optional chaining
     Optional<ServiceFormItem> itemOptional = serviceFormItemRepository.findByIdAndDeletedAtIsNull(itemId);
     if (itemOptional.isEmpty()) {
       throw new BusinessException(Messages.SERVICE_FORM_ITEM_NOT_FOUND);
@@ -232,7 +217,6 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
 
     ServiceFormItem item = itemOptional.get();
 
-    // Guard Clause: ServiceForm is locked?
     Optional<ServiceForm> formForLockCheckOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(item.getServiceFormId());
     if (formForLockCheckOptional.isPresent()) {
       ServiceForm formForLockCheck = formForLockCheckOptional.get();
@@ -241,18 +225,15 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
       }
     }
 
-    // Guard Clause: Already deleted?
     if (item.getDeletedAt() != null) {
       throw new BusinessException(Messages.SERVICE_FORM_ITEM_ALREADY_DELETED);
     }
 
-    // Soft delete
     LocalDateTime now = LocalDateTime.now();
     item.setDeletedAt(now);
     item.setDeletedBy(userId);
     serviceFormItemRepository.save(item);
 
-    // Recalculate ServiceForm totalAmount
     List<ServiceFormItem> remainingItems = serviceFormItemRepository.findByServiceFormIdAndDeletedAtIsNull(
         item.getServiceFormId()
     );
@@ -270,13 +251,6 @@ public class ServiceFormItemServiceImpl implements ServiceFormItemService {
       serviceFormRepository.save(form);
     }
 
-    // Audit log
-    String auditDetails = String.format(
-        "Servis formu kalemi silindi: serviceFormID=%d, lineTotal=%s",
-        item.getServiceFormId(),
-        item.getLineTotal()
-    );
-    auditLogService.log(userId, "SERVICE_FORM_ITEM_DELETED", "SERVICE_FORM_ITEM", itemId, auditDetails);
+    auditLogService.log(userId, "SERVICE_FORM_ITEM_DELETED", "SERVICE_FORM_ITEM", itemId, "Deleted item");
   }
 }
-

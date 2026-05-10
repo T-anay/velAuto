@@ -12,10 +12,9 @@ import org.mapstruct.MappingTarget;
 public interface ServiceFormMapper {
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "status", expression = "java(com.velauto.entity.enums.ServiceFormStatus.OPEN)")
+  @Mapping(target = "status", source = "status", defaultValue = "OPEN")
   @Mapping(target = "totalAmount", expression = "java(java.math.BigDecimal.ZERO)")
   @Mapping(target = "totalTax", expression = "java(java.math.BigDecimal.ZERO)")
-  // CREATE işleminde DTO'daki "description"ı Entity'deki "complaints"e atıyoruz
   @Mapping(target = "complaints", source = "description")
   @Mapping(target = "isLocked", ignore = true)
   @Mapping(target = "createdBy", ignore = true)
@@ -40,8 +39,6 @@ public interface ServiceFormMapper {
   @Mapping(target = "updatedAt", ignore = true)
   @Mapping(target = "deletedAt", ignore = true)
   @Mapping(target = "deletedBy", ignore = true)
-  // UPDATE işleminde DTO'da description olmadığı için complaints'i yoksayıyoruz.
-  // Service katmanında veya DTO'da complaints var ise onu elle set edeceğiz.
   @Mapping(target = "complaints", ignore = true)
   void updateServiceForm(ServiceFormUpdateDto dto, @MappingTarget ServiceForm serviceForm);
 

@@ -31,3 +31,9 @@ databaseChangeLog:
           file: db/changelog/changes/015-nullable-user-email.sql
     - include:
           file: db/changelog/changes/016-staff-service-form-public-updates.sql
+    - include:
+          file: db/changelog/changes/017-fix-service-form-status-column.sql
+    - include:
+          file: db/changelog/changes/018-make-catalog-id-nullable.sql
+    - include:
+          file: db/changelog/changes/019-normalize-service-form-items-columns.sql

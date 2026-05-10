@@ -95,6 +95,10 @@ const deriveJobStatus = (status) => {
     return { status: 'PENDING', key: 'PENDING', label: 'Beklemede', color: 'amber' };
   }
 
+  if (['CONVERTED', 'İŞ EMRİNE DÖNÜŞTÜ'].includes(normalized)) {
+    return { status: 'CONVERTED', key: 'CONVERTED', label: 'İş Emrine Aktarıldı', color: 'blue' };
+  }
+
 
   return { status: 'IN_PROGRESS', key: 'IN_PROGRESS', label: 'İşlemde', color: 'blue' };
 };
@@ -162,8 +166,9 @@ export const normalizeVehicle = (vehicle, customerLookup = new Map()) => {
 export const normalizeAppointment = (appointment, customerLookup = new Map(), vehicleLookup = new Map()) => {
   const customer = customerLookup.get(String(appointment?.customerId ?? appointment?.customer?.id ?? '')) || appointment?.customer || null;
   const vehicle = vehicleLookup.get(String(appointment?.vehicleId ?? appointment?.vehicle?.id ?? '')) || appointment?.vehicle || null;
-  const statusRaw = normalizeText(appointment?.status, appointment?.approvalStatus).toUpperCase();
+  const statusRaw = normalizeText(appointment?.status, appointment?.approvalStatus, appointment?.statusKey).toUpperCase();
   const approved = ['APPROVED', 'ONAYLI', 'CONFIRMED', 'ACCEPTED'].includes(statusRaw);
+  const converted = statusRaw === 'CONVERTED';
 
   return {
     id: appointment?.id,
@@ -172,10 +177,11 @@ export const normalizeAppointment = (appointment, customerLookup = new Map(), ve
     plate: normalizePlate(appointment?.plate, appointment?.licensePlate, vehicle?.licensePlate, vehicle?.plate),
     customer: normalizeText(appointment?.customerName, customer?.fullName, customer?.name, appointment?.customer, 'Müşteri'),
     phone: normalizePhoneDigits(normalizeText(appointment?.phone, customer?.phone)),
-    service: normalizeText(appointment?.service, appointment?.description, appointment?.note, 'Bakım'),
+    service: normalizeText(appointment?.service, appointment?.description, appointment?.notes, appointment?.note, 'Bakım'),
     time: normalizeText(appointment?.appointmentDate, appointment?.time, appointment?.dateTime),
-    status: approved ? 'ONAYLI' : 'ONAY BEKLİYOR',
-    type: approved ? 'green' : 'red',
+    status: converted ? 'CONVERTED' : approved ? 'ONAYLI' : 'ONAY BEKLİYOR',
+    statusRaw: statusRaw,
+    type: converted ? 'blue' : approved ? 'green' : 'red',
     brand: normalizeText(appointment?.brand, appointment?.make, vehicle?.brand),
     model: normalizeText(appointment?.model, appointment?.modelName, vehicle?.model),
     email: normalizeText(appointment?.email, customer?.email),
@@ -426,6 +432,7 @@ export const api = {
     listByForm: (serviceFormId, params = '?page=0&size=100') => request(`/api/v1/service-form-items/by-form/${serviceFormId}${params}`),
     create: (payload) => request('/api/v1/service-form-items', { method: 'POST', body: payload }),
     updateStatus: (id, status) => request(`/api/v1/service-form-items/${id}/status`, { method: 'PATCH', body: { status } }),
+    remove: (id) => request(`/api/v1/service-form-items/${id}`, { method: 'DELETE' }),
   },
   staff: {
     list: () => request('/api/v1/staff'),

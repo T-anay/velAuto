@@ -21,8 +21,6 @@ export default function JobOrderDetail() {
     removeServiceItem,
     refreshJob,
     updateServiceItemStatus,
-    staff = [],
-    assignServiceFormStaff,
   } = useService();
 
   const job = useMemo(() => jobs.find((entry) => String(entry.id) === String(id)), [id, jobs]);
@@ -33,22 +31,13 @@ export default function JobOrderDetail() {
   const [actionError, setActionError] = useState('');
   const [confirmComplete, setConfirmComplete] = useState(false);
 
+  const [hasSynced, setHasSynced] = useState(false);
+
   useEffect(() => {
-    let cancelled = false;
-    const loadDetail = async () => {
-      if (!job?.serviceFormId || (job.items || []).length > 0) return;
-      setIsLoadingDetail(true);
-      try {
-        await refreshJob(job.id);
-      } finally {
-        if (!cancelled) setIsLoadingDetail(false);
-      }
-    };
-    void loadDetail();
-    return () => {
-      cancelled = true;
-    };
-  }, [job, refreshJob]);
+    if (!job?.serviceFormId || hasSynced) return;
+    
+    refreshJob(job.id).then(() => setHasSynced(true));
+  }, [id, job?.serviceFormId, refreshJob, hasSynced]);
 
   if (!job) {
     return (
@@ -86,11 +75,15 @@ export default function JobOrderDetail() {
       return;
     }
 
-    await addServiceItem(job.id, { name, price, unitPrice: price, quantity: 1, taxRate: 0, status: 'BEKLIYOR' });
-    setSelectedOperation('');
-    setCustomOperationName('');
-    setManualPrice('');
-    setActionError('');
+    try {
+      await addServiceItem(job.id, { name, price, unitPrice: price, quantity: 1, taxRate: 0, status: 'BEKLIYOR' });
+      setSelectedOperation('');
+      setCustomOperationName('');
+      setManualPrice('');
+      setActionError('');
+    } catch (err) {
+      setActionError(err.message || 'Islem eklenirken bir hata olustu.');
+    }
   };
 
   const onItemStatusChange = async (itemId, status) => {
@@ -155,10 +148,6 @@ export default function JobOrderDetail() {
             <div className="text-5xl font-black text-[var(--accent)] mb-6">{Number(job.total || 0).toLocaleString()} <span className="text-3xl">TL</span></div>
 
             <div className="grid grid-cols-1 gap-3 w-full">
-              <select value={job.assignedStaffId || ''} onChange={(event) => assignServiceFormStaff(job.id, event.target.value)} className="p-4 rounded-lg bg-[var(--bg-main)] border border-[var(--border-strong)] text-[var(--text-primary)]">
-                <option value="">Personel ata</option>
-                {staff.map((person) => <option key={person.id} value={person.id}>{person.fullName || person.email}</option>)}
-              </select>
 
               <select value={job.status} onChange={(event) => setJobStatus(job.id, event.target.value)} className="p-4 rounded-lg bg-[var(--bg-main)] border border-[var(--border-strong)] text-[var(--text-primary)]">
                 <option value="IN_PROGRESS">Islemde</option>

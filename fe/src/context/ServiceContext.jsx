@@ -64,14 +64,20 @@ const extractCollection = (payload) => {
   return payload.content || payload.items || payload.data || payload.results || payload.list || [];
 };
 
-const normalizeUser = (profile, fallbackEmail = '') => ({
-  id: profile?.id ?? profile?.userId ?? profile?.sub ?? fallbackEmail,
-  email: normalizeText(profile?.email, fallbackEmail),
-  fullName: normalizeText(profile?.fullName, profile?.name, profile?.username, profile?.firstName, fallbackEmail),
-  phone: normalizeText(profile?.phone, profile?.phoneNumber),
-  role: normalizeText(profile?.role, profile?.authority, profile?.type, 'USER'),
-  raw: profile || null,
-});
+const normalizeUser = (profile, fallbackEmail = '') => {
+  const firstName = profile?.firstName || '';
+  const lastName = profile?.lastName || '';
+  const combinedName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : null;
+
+  return {
+    id: profile?.id ?? profile?.userId ?? profile?.sub ?? fallbackEmail,
+    email: normalizeText(profile?.email, fallbackEmail),
+    fullName: normalizeText(profile?.fullName, profile?.name, combinedName, profile?.username, fallbackEmail),
+    phone: normalizeText(profile?.phone, profile?.phoneNumber),
+    role: normalizeText(profile?.role, profile?.authority, profile?.type, 'USER'),
+    raw: profile || null,
+  };
+};
 
 const buildPendingPayment = (job) => ({
   id: `pending-${job.id}`,
@@ -146,13 +152,13 @@ const splitFullName = (fullName) => {
 export const ServiceProvider = ({ children }) => {
   const savedTokens = getStoredTokens();
   const [user, setUser] = useState(() => (savedTokens.accessToken || savedTokens.refreshToken) ? loadJsonValue([CACHE_KEYS.user], null) : null);
-  const [jobs, setJobs] = useState(() => loadJsonArray([CACHE_KEYS.jobs, 'velauto_jobs'], []));
+  const [jobs, setJobs] = useState([]);
   const [customers, setCustomers] = useState(() => loadJsonArray([CACHE_KEYS.customers, 'velauto_customers'], []));
   const [vehicles, setVehicles] = useState(() => loadJsonArray(['velauto_vehicles_cache', 'velauto_vehicles'], []));
-  const [appointments, setAppointments] = useState(() => loadJsonArray([CACHE_KEYS.appointments, 'velauto_appointments'], []));
+  const [appointments, setAppointments] = useState([]);
   const [payments, setPayments] = useState(() => loadJsonArray([CACHE_KEYS.payments, 'velauto_payments'], []));
   const [serviceCatalog, setServiceCatalog] = useState(() => loadJsonArray([CACHE_KEYS.serviceCatalog], []));
-  const [appointmentOverrides, setAppointmentOverrides] = useState(() => loadJsonValue([CACHE_KEYS.appointmentOverrides], {}));
+  const [appointmentOverrides, setAppointmentOverrides] = useState({});
   const [isBootstrapping, setIsBootstrapping] = useState(Boolean(savedTokens.accessToken || savedTokens.refreshToken));
   const [error, setError] = useState('');
   const [isLoadingJob, setIsLoadingJob] = useState(false);
@@ -166,7 +172,7 @@ export const ServiceProvider = ({ children }) => {
   useEffect(() => saveJson(CACHE_KEYS.appointments, appointments), [appointments]);
   useEffect(() => saveJson(CACHE_KEYS.payments, payments), [payments]);
   useEffect(() => saveJson(CACHE_KEYS.serviceCatalog, serviceCatalog), [serviceCatalog]);
-  useEffect(() => saveJson(CACHE_KEYS.appointmentOverrides, appointmentOverrides), [appointmentOverrides]);
+  useEffect(() => saveJson(CACHE_KEYS.serviceCatalog, serviceCatalog), [serviceCatalog]);
   useEffect(() => {
     const fetchStaff = async () => {
       try {
@@ -178,6 +184,9 @@ export const ServiceProvider = ({ children }) => {
     };
     fetchStaff();
   }, []);
+
+  // GLOBAL SYNC kaldırıldı, döngüye sebep oluyordu.
+  // Bunun yerine initial auth useEffect içine entegre edildi.
 
 
   // Normalize any cached jobs/appointments on mount so older caches still have status metadata
@@ -220,10 +229,10 @@ export const ServiceProvider = ({ children }) => {
     }
 
     // Only show "System is Preparing" if we don't have existing data in state
-    const hasData = (appointments.length > 0 || jobs.length > 0);
-    if (!hasData) {
-      setIsBootstrapping(true);
-    }
+    // const hasData = (appointments.length > 0 || jobs.length > 0);
+    // if (!hasData) {
+    //   setIsBootstrapping(true);
+    // }
     setError('');
 
 
@@ -232,19 +241,18 @@ export const ServiceProvider = ({ children }) => {
         await refreshToken(tokens.refreshToken);
       }
 
-      const storedUserStr = localStorage.getItem('user');
-      const storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
-      const tenantId = storedUser?.tenantId || 1;
+      // 1. Önce profil bilgisini al ki tenantId kesinleşsin
+      const profileResponse = await api.auth.me().catch(() => null);
+      const tenantId = profileResponse?.tenantId || profileResponse?.tenant?.id || 1;
+      const query = `?page=0&size=500&tenantId=${tenantId}`;
 
-      const query = `?page=0&size=50&tenantId=${tenantId}`;
-
-      const [profileResponse, customersResponse, vehiclesResponse, appointmentsResponse, serviceFormsResponse, catalogResponse] = await Promise.all([
-        api.auth.me().catch(() => null),
+      // 2. Diğer verileri bu tenantId ile çek
+      const [customersResponse, vehiclesResponse, appointmentsResponse, serviceFormsResponse, catalogResponse] = await Promise.all([
         api.customers.list(query).catch(() => []),
         api.vehicles.list(query).catch(() => []),
         api.appointments.list(query).catch(() => []),
         api.serviceForms.list(query).catch(() => []),
-        api.serviceCatalog.list(query).catch(() => []), // Doğru endpoint: serviceCatalog (s takısı yok)
+        api.serviceCatalog.list(query).catch(() => []),
       ]);
 
       const normalizedCustomers = extractCollection(customersResponse).map(normalizeCustomer);
@@ -308,25 +316,12 @@ export const ServiceProvider = ({ children }) => {
 
   useEffect(() => {
     const tokens = getStoredTokens();
-
-    if (!tokens.accessToken && !tokens.refreshToken) {
+    if (tokens.accessToken || tokens.refreshToken) {
+      syncRemoteData();
+    } else {
       setIsBootstrapping(false);
-      return;
     }
-
-    api.auth.me()
-      .then(profileResponse => {
-        const cachedUser = loadJsonValue([CACHE_KEYS.user], null);
-        setUser(normalizeUser(profileResponse, cachedUser?.email || ''));
-      })
-      .catch((err) => {
-        console.warn("Oturum doğrulanamadı, token süresi dolmuş olabilir.", err);
-      })
-      .finally(() => {
-        setIsBootstrapping(false);
-      });
-
-  }, []);
+  }, [syncRemoteData]);
 
   const ensureCustomer = useCallback(async ({ fullName, phone, plate, address, notes }) => {
     const normalizedPlate = normalizePlate(plate);
@@ -384,8 +379,7 @@ export const ServiceProvider = ({ children }) => {
         throw err;
       }
 
-      const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
-      const tenantId = storedUser?.tenantId || user?.raw?.tenantId || 1;
+      const tenantId = user?.raw?.tenantId || user?.id || 1;
       const listResponse = await api.vehicles.list(`?page=0&size=100&tenantId=${tenantId}`).catch(() => null);
       const matched = extractCollection(listResponse)
         .find((vehicle) => normalizePlate(vehicle?.licensePlate || vehicle?.plate) === normalizedPlate);
@@ -532,10 +526,8 @@ export const ServiceProvider = ({ children }) => {
 
     let created = null;
     try {
-
       let formattedDate = appointment.time;
       if (formattedDate && !formattedDate.includes(':00.000Z')) {
-
         formattedDate = new Date(appointment.time).toISOString();
       }
 
@@ -543,29 +535,16 @@ export const ServiceProvider = ({ children }) => {
         customerId: customer.id,
         vehicleId,
         appointmentDate: formattedDate,
-        description: appointment.service,
-
+        notes: appointment.service,
       });
-    } catch {
-
-      created = {
-        id: Date.now(),
-        customerId: customer.id,
-        vehicleId,
-        appointmentDate: appointment.time,
-        description: appointment.service,
-        status: 'PENDING',
-        plate: appointment.plate,
-        customerName: appointment.customer,
-        phone: appointment.phone,
-        brand: appointment.brand,
-        model: appointment.model,
-      };
+    } catch (err) {
+      console.error("Appointment creation failed:", err);
+      throw new Error("Randevu veri tabanına kaydedilemedi: " + (err.message || "Bilinmeyen hata"));
     }
 
     const vehicleSnapshot = cachedVehicle || createdVehicle || {};
     const normalizedAppointment = normalizeAppointment(
-      created || appointment,
+      created,
       new Map([[String(customer.id), customer]]),
       new Map([[String(vehicleId), {
         id: vehicleId,
@@ -579,7 +558,7 @@ export const ServiceProvider = ({ children }) => {
     normalizedAppointment.brand = normalizedAppointment.brand || appointment.brand;
     normalizedAppointment.model = normalizedAppointment.model || appointment.model;
 
-    setAppointments((prev) => [...prev.filter((item) => String(item.id) !== String(normalizedAppointment.id)), normalizedAppointment]);
+    setAppointments((prev) => [...prev, normalizedAppointment]);
     pushToast({
       type: created && typeof created.id !== 'string' ? 'success' : 'warning',
       title: 'Randevu kaydedildi',
@@ -647,17 +626,28 @@ export const ServiceProvider = ({ children }) => {
 
   const getAppointmentStatus = useCallback((appointment) => {
     if (!appointment || !appointment.id) return { status: 'PENDING', at: null };
+    
+    // 1. Randevunun kendi status bilgisini kontrol et (Backend'den gelen CONVERTED vb.)
+    const statusRaw = String(appointment.status || appointment.statusRaw || '').toUpperCase();
+    if (['CONVERTED', 'İŞ EMRİNE DÖNÜŞTÜ'].includes(statusRaw)) {
+      return { status: 'CONVERTED', at: null };
+    }
+
+    // 2. Eğer bu randevu için halihazırda bir iş emri (job) varsa (Backend senkronu)
+    const hasJob = jobs.some(j => String(j.appointmentId) === String(appointment.id));
+    if (hasJob) return { status: 'CONVERTED', at: null };
+
+    // 3. Geçici lokal override (Henüz backend'e gitmemiş anlık değişiklikler için)
     const override = appointmentOverrides[appointment.id];
     if (override) return override;
-    const statusRaw = String(appointment.status || '').toUpperCase();
+
+    // 4. Standart onay kontrolü
     const isApproved = ['APPROVED', 'ONAYLI', 'ONAYLANDI'].includes(statusRaw);
     return {
       status: isApproved ? 'APPROVED' : 'PENDING',
       at: null,
     };
-
-
-  }, [appointmentOverrides]);
+  }, [appointmentOverrides, jobs]);
 
   const addJob = useCallback(async (newJob) => {
     if (isLoadingJob) {
@@ -691,26 +681,6 @@ export const ServiceProvider = ({ children }) => {
       const currentKm = toNumber(newJob.currentKm, 0);
       const complaint = newJob.complaint || newJob.description || 'Belirtilmedi';
 
-      // Geçici ID ile hemen state'e ekle (UI anında güncellensin)
-      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-      const tempJob = {
-        id: tempId,
-        plate,
-        customer: customer.fullName,
-        brand: newJob.brand || 'Araç',
-        model: newJob.model || '',
-        complaint: complaint,
-        status: 'IN_PROGRESS',
-        statusKey: 'IN_PROGRESS',
-        statusLabel: 'İşlemde',
-        color: 'blue',
-        items: [],
-        total: 0,
-        createdAt: new Date().toISOString()
-      };
-
-      setJobs(prev => [...prev, tempJob]);
-
       // Backend'e gönder
       let backendJob = null;
       try {
@@ -718,11 +688,9 @@ export const ServiceProvider = ({ children }) => {
           vehicleId: vehicle.id,
           customerId: customer.id,
           currentKm,
-          description: complaint, // Backend'in beklediği yeni alan adı
-          complaints: complaint,  // Geriye dönük uyumluluk için
+          description: complaint,
           status: 'IN_PROGRESS'
         };
-
 
         if (newJob.appointmentId) {
           backendJob = await api.serviceForms.createFromAppointment(newJob.appointmentId, payload);
@@ -730,7 +698,8 @@ export const ServiceProvider = ({ children }) => {
           backendJob = await api.serviceForms.create(payload);
         }
       } catch (apiErr) {
-        console.error("Backend job creation failed, keeping local-only for now:", apiErr);
+        console.error("Backend job creation failed:", apiErr);
+        throw new Error("İş emri veri tabanına kaydedilemedi: " + (apiErr.message || "Bilinmeyen hata"));
       }
 
       if (backendJob) {
@@ -743,16 +712,14 @@ export const ServiceProvider = ({ children }) => {
           color: meta.color
         };
 
-        setJobs(prev => prev.map(j => j.id === tempId ? finalJob : j));
+        setJobs(prev => [...prev, finalJob]);
+        pushToast({
+          type: 'success',
+          title: 'İş emri oluşturuldu',
+          message: `${plate} plakalı araç için servis kaydı açıldı.`,
+        });
         return { success: true, job: finalJob };
       }
-
-      pushToast({
-        type: 'success',
-        title: 'İş emri oluşturuldu',
-        message: `${plate} plakalı araç için servis kaydı açıldı.`,
-      });
-      return { success: true, job: tempJob };
 
     } finally {
       setIsLoadingJob(false);
@@ -823,15 +790,30 @@ export const ServiceProvider = ({ children }) => {
     if (!job) throw new Error('İş emri bulunamadı.');
 
     const normalizedItem = normalizeServiceItem(item);
+    
+    // Backend'in beklediği serviceCatalogId'yi bul
+    const catalogMatch = serviceCatalog.find(c => c.name === normalizedItem.name);
+    const catalogId = catalogMatch?.id || item.serviceCatalogId;
 
     if (isBackendCompatibleIntegerId(job.serviceFormId)) {
-      await api.serviceFormItems.create({
-        serviceFormId: job.serviceFormId,
-        itemName: normalizedItem.name,
-        unitPrice: normalizedItem.unitPrice,
-        quantity: normalizedItem.quantity,
-        taxRate: normalizedItem.taxRate,
-      }).catch(() => null);
+      try {
+        const response = await api.serviceFormItems.create({
+          serviceFormId: job.serviceFormId,
+          serviceCatalogId: catalogId,
+          itemName: normalizedItem.name,   // Yeni eklenen alanlar
+          unitPrice: normalizedItem.price, // Yeni eklenen alanlar
+          taxRate: normalizedItem.taxRate || 0, // Yeni eklenen alanlar
+          quantity: normalizedItem.quantity || 1,
+          status: 'BEKLIYOR'
+        });
+        
+        if (response && response.id) {
+          normalizedItem.id = response.id;
+        }
+      } catch (err) {
+        console.error("İş kalemi eklenemedi:", err);
+        throw err;
+      }
     }
 
     const nextItems = [...(job.items || []), normalizedItem];
@@ -840,11 +822,20 @@ export const ServiceProvider = ({ children }) => {
     setJobs((prev) => prev.map((entry) => String(entry.id) === String(jobId) ? { ...entry, items: nextItems, total: nextTotal } : entry));
 
     return { success: true, item: normalizedItem };
-  }, [jobs]);
+  }, [jobs, serviceCatalog]);
 
-  const removeServiceItem = useCallback((jobId, itemId) => {
+  const removeServiceItem = useCallback(async (jobId, itemId) => {
     const job = jobs.find((entry) => String(entry.id) === String(jobId));
     if (!job) return;
+
+    if (isBackendCompatibleIntegerId(itemId)) {
+      try {
+        await api.serviceFormItems.remove(itemId);
+      } catch (err) {
+        console.error("İş kalemi silinemedi:", err);
+        throw err;
+      }
+    }
 
     const nextItems = (job.items || []).filter((item) => String(item.id) !== String(itemId));
     const nextTotal = nextItems.reduce((sum, entry) => sum + toNumber(entry.price, 0), 0);
@@ -859,7 +850,7 @@ export const ServiceProvider = ({ children }) => {
     if (!detail) return current;
 
     const customerLookup = new Map(customers.map((customer) => [String(customer.id), customer]));
-    const vehicleLookup = new Map();
+    const vehicleLookup = new Map(vehicles.map((vehicle) => [String(vehicle.id), vehicle]));
     const normalized = normalizeServiceForm(detail, customerLookup, vehicleLookup);
 
     setJobs((prev) => prev.map((entry) => String(entry.id) === String(jobId) ? { ...entry, ...normalized, items: normalized.items.length ? normalized.items : entry.items } : entry));
@@ -989,7 +980,7 @@ export const ServiceProvider = ({ children }) => {
 
   const updateUserProfile = useCallback(async (payload) => {
     const currentRaw = user?.raw || {};
-    const response = await api.auth.updateProfile(payload).catch(() => null);
+    const response = await api.auth.updateProfile(payload);
     const mergedRaw = { ...currentRaw, ...payload, ...(response || {}) };
     const normalized = normalizeUser(mergedRaw, user?.email || '');
     normalized.raw = mergedRaw;
@@ -1011,7 +1002,7 @@ export const ServiceProvider = ({ children }) => {
     error,
     isBootstrapping,
     isLoadingJob,
-    refreshData: syncRemoteData,
+    syncRemoteData,
     jobs,
     customers,
     vehicles,

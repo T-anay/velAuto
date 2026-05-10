@@ -10,10 +10,6 @@ import org.mapstruct.Mapping;
 public interface ServiceFormItemMapper {
 
   @Mapping(target = "id", ignore = true)
-  @Mapping(target = "itemName", ignore = true)
-  @Mapping(target = "unitPrice", ignore = true)
-  @Mapping(target = "taxRate", ignore = true)
-  @Mapping(target = "lineTotal", ignore = true)
   @Mapping(target = "status", expression = "java(dto.getStatus() != null ? dto.getStatus() : com.velauto.entity.enums.ServiceFormItemStatus.BEKLIYOR)")
   @Mapping(target = "createdBy", ignore = true)
   @Mapping(target = "createdAt", ignore = true)
@@ -25,4 +21,3 @@ public interface ServiceFormItemMapper {
 
   ServiceFormItemResponseDto toResponseDto(ServiceFormItem entity);
 }
-

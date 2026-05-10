@@ -384,7 +384,7 @@ export default function Appointments() {
                         </div>
                         <div className="h-16 px-8 bg-[var(--accent)] text-white rounded-[1.25rem] flex items-center gap-2 shadow-lg shadow-[var(--accent)]/20 font-black text-xs uppercase tracking-[0.1em]">
                             <span className="opacity-70">Toplam:</span>
-                            <span className="text-lg">{appointments.length}</span>
+                            <span className="text-lg">{(appointments || []).filter(app => app && getAppointmentStatus(app).status !== 'CONVERTED').length}</span>
                         </div>
                     </div>
                 </div>

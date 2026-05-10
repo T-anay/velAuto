@@ -5,12 +5,20 @@ import { adminModuleList, adminModules } from '../constants/adminModules';
 
 export default function Profile() {
   const { user, jobs, updateUserProfile, changeUserPassword } = useService();
-  const shortcutModules = adminModuleList.filter((item) => item.path !== adminModules.profile.path);
+  const userRole = String(user?.role || '').toUpperCase();
+  const isElevated = userRole.includes('ADMIN') || userRole.includes('SUPERADMIN');
+  const restrictedPaths = ['/personel', '/giderler', '/sistem-kayitlari', '/ai-ayarlari', '/faturalar', '/randevular'];
+
+  const shortcutModules = adminModuleList.filter((item) => {
+    if (item.path === adminModules.profile.path) return false;
+    if (!isElevated && restrictedPaths.includes(item.path)) return false;
+    return true;
+  });
 
   const [profileForm, setProfileForm] = useState({
+    firstName: user?.raw?.firstName || '',
+    lastName: user?.raw?.lastName || '',
     phone: user?.phone || '',
-    email: user?.email || '',
-    address: user?.raw?.address || '',
   });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -60,9 +68,9 @@ export default function Profile() {
     try {
       setSavingProfile(true);
       await updateUserProfile({
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
         phone: profileForm.phone,
-        email: profileForm.email,
-        address: profileForm.address,
       });
       setProfileMessage('Profil bilgileri güncellendi.');
     } catch (error) {
@@ -95,8 +103,9 @@ export default function Profile() {
     try {
       setSavingPassword(true);
       await changeUserPassword({
-        currentPassword: passwordForm.currentPassword,
+        oldPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
+        newPasswordConfirm: passwordForm.confirmPassword,
       });
       setPasswordMessage('Parola başarıyla güncellendi.');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -256,6 +265,28 @@ export default function Profile() {
             </div>
 
             <form onSubmit={onSubmitProfile} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">Ad</label>
+                  <input
+                    type="text"
+                    value={profileForm.firstName}
+                    onChange={(e) => setProfileForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                    className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                    placeholder="Ad"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">Soyad</label>
+                  <input
+                    type="text"
+                    value={profileForm.lastName}
+                    onChange={(e) => setProfileForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                    className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                    placeholder="Soyad"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">Telefon</label>
                 <input
@@ -264,25 +295,6 @@ export default function Profile() {
                   onChange={(e) => setProfileForm((prev) => ({ ...prev, phone: e.target.value }))}
                   className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
                   placeholder="05XX XXX XX XX"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">E-Posta</label>
-                <input
-                  type="email"
-                  value={profileForm.email}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
-                  placeholder="ornek@velauto.com"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">Adres</label>
-                <textarea
-                  value={profileForm.address}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, address: e.target.value }))}
-                  className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)] min-h-24"
-                  placeholder="Şube adresi"
                 />
               </div>
 

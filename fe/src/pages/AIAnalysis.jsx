@@ -1,13 +1,24 @@
 import { useMemo, useState } from 'react';
+import { 
+  Brain, 
+  Car, 
+  FileText, 
+  Sparkles, 
+  CheckCircle2, 
+  AlertCircle, 
+  Wand2, 
+  ArrowRight,
+  Zap,
+  Info
+} from 'lucide-react';
 import BackButton from '../components/BackButton';
 import { pushToast } from '../lib/toastBus';
 import { mapDamageToCatalog, damagePrices } from '../constants/damageCatalogMap';
-import { applyBrandMultiplier, getBrandTier } from '../constants/brandTiers';
+import { applyBrandMultiplier } from '../constants/brandTiers';
 import { carBrands } from '../constants/carData';
 
 export default function AIAnalysis() {
   const [complaintText, setComplaintText] = useState('');
-  const [uploadedFiles, setUploadedFiles] = useState([]);
   const [analysisRunAt, setAnalysisRunAt] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
@@ -21,60 +32,45 @@ export default function AIAnalysis() {
       return;
     }
 
+    if (!complaintText.trim()) {
+      pushToast({ type: 'warning', title: 'Açıklama Girin', message: 'Analiz için şikayet veya teknik not girilmelidir.' });
+      return;
+    }
+
     setIsRunning(true);
     setAiReport('');
     setRemoteSuggestions([]);
 
     try {
-      const next = [];
-      if (uploadedFiles.length > 0) {
-        const formData = new FormData();
-        formData.append('image', uploadedFiles[0]);
-        formData.append('description', complaintText || `${brand} ${model} araç kontrolü`);
+      const formData = new FormData();
+      formData.append('description', complaintText || `${brand} ${model} servis talebi`);
+      
+      const response = await fetch('http://localhost:8000/analyze-text', { 
+        method: 'POST', 
+        body: formData 
+      });
 
-        const response = await fetch('http://localhost:8000/analyze-damage', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.detected_damages) {
-            const detected = data.detected_damages.map((det) => ({
-              type: 'YOLO',
-              label: det.label,
-              confidence: Math.round(det.confidence * 100)
-            }));
-            next.push(...detected);
-          }
-          if (data.ai_analysis_report) {
-            setAiReport(data.ai_analysis_report);
-          }
-        }
+      if (response.ok) {
+        const data = await response.json();
+        setAiReport(data.ai_analysis_report);
+        setRemoteSuggestions([]);
       } else {
-        const formData = new FormData();
-        formData.append('description', complaintText || `${brand} ${model} servis talebi`);
-        const response = await fetch('http://localhost:8000/analyze-text', { method: 'POST', body: formData });
-        if (response.ok) {
-          const data = await response.json();
-          setAiReport(data.ai_analysis_report);
-        }
+        throw new Error('Servis hatası');
       }
-      setRemoteSuggestions(next);
+
       setAnalysisRunAt(new Date().toLocaleString('tr-TR'));
       pushToast({ type: 'success', title: 'Analiz Tamamlandı', message: 'Yapay zeka usta raporu hazır.' });
     } catch (err) {
       console.error('AI Analiz hatası:', err);
-      pushToast({ type: 'error', title: 'Analiz Hatası', message: 'AI servisi şu an yanıt vermiyor.' });
+      pushToast({ type: 'error', title: 'Analiz Hatası', message: 'Yapay zeka servisi şu an yanıt vermiyor.' });
     } finally {
       setIsRunning(false);
     }
   };
 
-  const tier = getBrandTier(brand);
-
   const estimatedPrice = useMemo(() => {
     const categories = new Set();
+    
     remoteSuggestions.forEach((s) => {
       if (s.type === 'YOLO') {
         mapDamageToCatalog(s.label).forEach((c) => categories.add(c));
@@ -97,139 +93,182 @@ export default function AIAnalysis() {
   }, [remoteSuggestions, aiReport, complaintText, brand]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <BackButton />
-        <div className="flex items-center gap-3">
-          <span className="w-3 h-3 rounded-full bg-[var(--accent)] animate-pulse" />
-          <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-widest">AI Service Online</span>
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Üst Başlık Bölümü */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-4 mb-4">
+            <BackButton />
+            <div className="px-3 py-1 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-full flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+              <span className="text-[10px] font-black text-[var(--accent)] uppercase tracking-widest">Yapay Zeka v2.4 Aktif</span>
+            </div>
+          </div>
+          <h1 className="text-5xl font-black text-[var(--text-primary)] tracking-tight">
+            Akıllı <span className="text-[var(--accent)]">Teşhis</span> Merkezi
+          </h1>
+          <p className="text-[var(--text-muted)] font-medium mt-2 max-w-2xl">
+            Yapay zeka destekli hasar analizi sistemi. 
+            Teknik veriler ve şikayet notları üzerinden anında raporlama.
+          </p>
         </div>
       </div>
 
-      <div>
-        <p className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-muted)] font-black">Admin Panel / Akıllı Teşhis</p>
-        <h1 className="text-4xl font-black text-[var(--text-primary)] mt-2 tracking-tight">AI Hasar Analizi ve Raporlama</h1>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Giriş Yapılandırması - SOL SÜTUN */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="glass-card rounded-[32px] p-8 relative overflow-hidden group border border-[var(--border-soft)]">
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-[var(--accent)]/10 blur-[80px] rounded-full" />
+            
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center">
+                <Car size={20} strokeWidth={2.5} />
+              </div>
+              <h2 className="text-xl font-black text-[var(--text-primary)]">Araç Bilgileri</h2>
+            </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        {/* Input Section */}
-        <section className="xl:col-span-1 space-y-6">
-          <div className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-[32px] p-8 shadow-xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 blur-3xl rounded-full" />
-            <h2 className="text-xl font-black text-[var(--text-primary)] mb-6 flex items-center gap-3">
-              <span className="w-8 h-8 rounded-lg bg-[var(--bg-main)] border border-[var(--border-soft)] flex items-center justify-center text-lg"></span>
-              Araç Bilgileri
-            </h2>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Marka</label>
+                  <div className="relative">
+                    <select
+                      value={brand}
+                      onChange={(e) => { setBrand(e.target.value); setModel(''); }}
+                      className="w-full p-4 bg-[var(--bg-main)]/50 border border-[var(--border-soft)] rounded-2xl text-[var(--text-primary)] font-bold outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">Marka Seçin</option>
+                      {Object.keys(carBrands).sort().map((b) => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                      <ArrowRight size={16} className="rotate-90" />
+                    </div>
+                  </div>
+                </div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <select
-                  value={brand}
-                  onChange={(e) => { setBrand(e.target.value); setModel(''); }}
-                  className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-2xl text-[var(--text-primary)] font-bold outline-none focus:border-[var(--accent)] transition-all cursor-pointer"
-                >
-                  <option value="">Marka</option>
-                  {Object.keys(carBrands).sort().map((b) => <option key={b} value={b}>{b}</option>)}
-                </select>
-
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  disabled={!brand}
-                  className="w-full p-4 bg-[var(--bg-main)] border border-[var(--border-soft)] rounded-2xl text-[var(--text-primary)] font-bold outline-none focus:border-[var(--accent)] transition-all cursor-pointer disabled:opacity-30"
-                >
-                  <option value="">Model</option>
-                  {(carBrands[brand] || []).sort().map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Model</label>
+                  <div className="relative">
+                    <select
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      disabled={!brand}
+                      className="w-full p-4 bg-[var(--bg-main)]/50 border border-[var(--border-soft)] rounded-2xl text-[var(--text-primary)] font-bold outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all appearance-none cursor-pointer disabled:opacity-30"
+                    >
+                      <option value="">Model Seçin</option>
+                      {(carBrands[brand] || []).sort().map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              <textarea
-                value={complaintText}
-                onChange={(e) => setComplaintText(e.target.value)}
-                className="w-full p-5 rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-main)] min-h-[120px] text-sm font-medium outline-none focus:border-[var(--accent)] transition-all"
-                placeholder="Müşteri şikayeti veya teknik notlar..."
-              />
-
-              <div className="relative group">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setUploadedFiles(Array.from(e.target.files || []))}
-                  className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full h-full"
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest ml-1">Detaylı Şikayet / Teknik Notlar</label>
+                <textarea
+                  value={complaintText}
+                  onChange={(e) => setComplaintText(e.target.value)}
+                  className="w-full p-5 rounded-2xl border border-[var(--border-soft)] bg-[var(--bg-main)]/50 min-h-[220px] text-sm font-medium outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all resize-none"
+                  placeholder="Araçtaki sorunları, sesleri veya teknik belirtileri buraya detaylıca yazın..."
                 />
-                <div className={`p-6 border-2 border-dashed rounded-2xl text-center transition-all ${uploadedFiles.length > 0 ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border-soft)] bg-[var(--bg-main)] group-hover:border-[var(--accent)]/50'}`}>
-                  {uploadedFiles.length > 0 ? (
-                    <div className="space-y-1">
-                      <p className="text-[var(--accent)] font-black text-[10px] uppercase">Görsel Seçildi</p>
-                      <p className="text-xs font-bold text-[var(--text-primary)] truncate">{uploadedFiles[0].name}</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <p className="text-2xl mb-1">📸</p>
-                      <p className="text-[var(--text-muted)] font-black text-[10px] uppercase tracking-widest">Hasar Fotoğrafı</p>
-                    </div>
-                  )}
-                </div>
               </div>
 
               <button
                 onClick={runAnalysis}
                 disabled={isRunning || !brand}
-                className="w-full p-5 rounded-2xl bg-[var(--accent)] text-black font-black hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-[var(--accent)]/20 disabled:opacity-50 mt-4"
+                className="w-full p-5 rounded-2xl bg-[var(--accent)] text-black font-black text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-[var(--accent)]/20 disabled:opacity-50 flex items-center justify-center gap-3 relative overflow-hidden"
               >
-                {isRunning ? 'ANALİZ EDİLİYOR...' : 'AI ANALİZİNİ BAŞLAT'}
+                {isRunning ? (
+                  <>
+                    <div className="w-5 h-5 border-3 border-black/30 border-t-black rounded-full animate-spin" />
+                    <span>ANALİZ EDİLİYOR...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap size={18} fill="currentColor" />
+                    <span>AKILLI ANALİZİ BAŞLAT</span>
+                  </>
+                )}
+                {isRunning && <div className="absolute inset-0 bg-white/20 shimmer" />}
               </button>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* Results Section */}
-        <section className="xl:col-span-2 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* AI Report Card */}
-            <div className="bg-[var(--bg-card)] border border-[var(--border-soft)] rounded-[32px] p-8 shadow-xl min-h-[400px] flex flex-col">
-              <h2 className="text-xl font-black text-[var(--text-primary)] mb-6 flex items-center gap-3">
-                <span className="w-8 h-8 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center text-lg"></span>
-                AI Raporu
-              </h2>
+        {/* Sonuçlar / Zeka - SAĞ SÜTUN */}
+        <div className="lg:col-span-7 space-y-6">
+          <div className="glass-card rounded-[32px] p-8 min-h-[620px] flex flex-col border border-[var(--border-soft)] relative">
+            <div className="absolute top-8 right-8 text-[var(--accent)]/5">
+              <Brain size={120} strokeWidth={1} />
+            </div>
 
-              {aiReport ? (
-                <div className="flex-1 animate-in fade-in zoom-in duration-500">
-                  <div className="p-6 bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-[24px] relative">
-                    <div className="absolute -top-3 -left-3 text-4xl opacity-10">"</div>
-                    <div className="text-[var(--text-primary)] font-bold text-lg leading-relaxed italic whitespace-pre-wrap">
-                      {aiReport}
-                    </div>
-                  </div>
-
-                  <div className="mt-8 space-y-3">
-                    {remoteSuggestions.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 bg-[var(--bg-main)] rounded-2xl border border-[var(--border-soft)]">
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
-                          <span className="text-sm font-bold">{item.label}</span>
-                        </div>
-                        <span className="text-xs font-black text-[var(--accent)]">%{item.confidence}</span>
-                      </div>
-                    ))}
-                  </div>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center">
+                  <Sparkles size={20} strokeWidth={2.5} />
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-30 grayscale">
-                  <div className="text-6xl mb-4">⚙️</div>
-                  <p className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest">Analiz Sonucu Bekleniyor</p>
+                <h2 className="text-xl font-black text-[var(--text-primary)]">Analiz Raporu</h2>
+              </div>
+              
+              {analysisRunAt && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-black uppercase tracking-widest">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  Güncel
                 </div>
               )}
             </div>
-          </div>
 
-          {analysisRunAt && (
-            <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-              Son Başarılı Analiz: {analysisRunAt}
-            </div>
-          )}
-        </section>
+            {aiReport ? (
+              <div className="flex-1 space-y-8 animate-in fade-in zoom-in duration-500">
+                {/* Yapay Zeka Metin Raporu */}
+                <div className="relative">
+                  <div className="absolute -left-2 top-0 bottom-0 w-1 bg-[var(--accent)]/30 rounded-full" />
+                  <div className="pl-6">
+                    <h3 className="text-xs font-black text-[var(--accent)] uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <FileText size={14} />
+                      Teknik Değerlendirme
+                    </h3>
+                    <div className="text-[var(--text-primary)] font-bold text-lg leading-relaxed whitespace-pre-wrap">
+                      {aiReport}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
+                <div className="w-24 h-24 rounded-[32px] bg-[var(--bg-main)] border border-[var(--border-soft)] flex items-center justify-center text-[var(--accent)]/20 mb-6 relative">
+                  <Brain size={48} />
+                  {isRunning && (
+                    <div className="absolute inset-0 border-2 border-[var(--accent)] rounded-[32px] animate-ping opacity-20" />
+                  )}
+                </div>
+                <div className="max-w-xs">
+                  <h3 className="text-lg font-black text-[var(--text-primary)] mb-2">
+                    {isRunning ? 'Veriler İşleniyor' : 'Sistem Hazır'}
+                  </h3>
+                  <p className="text-sm font-medium text-[var(--text-muted)]">
+                    {isRunning 
+                      ? 'Yapay zeka modellerimiz verileri işliyor, bu işlem birkaç saniye sürebilir.' 
+                      : 'Araç bilgilerini ve şikayet detaylarını girin. Raporunuz burada görüntülenecektir.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {analysisRunAt && (
+              <div className="mt-auto pt-8 border-t border-[var(--border-soft)]/50">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
+                    <CheckCircle2 size={12} className="text-green-500" />
+                    Son Başarılı Analiz: {analysisRunAt}
+                  </div>
+                  <div className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest opacity-50">
+                    ID: {Math.random().toString(36).substring(7).toUpperCase()}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

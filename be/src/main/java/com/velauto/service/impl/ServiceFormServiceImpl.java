@@ -7,11 +7,14 @@ import com.velauto.dto.ServiceFormUpdateDto;
 import com.velauto.entity.Appointment;
 import com.velauto.entity.Customer;
 import com.velauto.entity.ServiceForm;
+import com.velauto.entity.ServiceFormItem;
 import com.velauto.entity.Staff;
 import com.velauto.entity.Vehicle;
+import com.velauto.entity.enums.AppointmentStatus;
 import com.velauto.entity.enums.ServiceFormItemStatus;
 import com.velauto.entity.enums.ServiceFormStatus;
 import com.velauto.exception.BusinessException;
+import com.velauto.mapper.ServiceFormItemMapper;
 import com.velauto.mapper.ServiceFormMapper;
 import com.velauto.repository.AppointmentRepository;
 import com.velauto.repository.CustomerRepository;
@@ -28,7 +31,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +47,7 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   private final ServiceFormItemRepository serviceFormItemRepository;
   private final StaffRepository staffRepository;
   private final ServiceFormMapper serviceFormMapper;
+  private final ServiceFormItemMapper serviceFormItemMapper;
   private final AuditLogService auditLogService;
 
   @Override
@@ -74,37 +80,30 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.VEHICLE_DELETED);
     }
 
-    // Customer doğrulamasını atlıyoruz (çünkü DTO'dan zorunluluğunu kaldırdık, araç üzerinden buluyoruz)
     Customer customer = vehicle.getCustomer();
     if (customer == null || customer.getDeletedAt() != null) {
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
 
-    // KM doğrulamasını atlıyoruz veya güvenli hale getiriyoruz
     Integer incomingKm = request.getCurrentKm() != null ? request.getCurrentKm() : 0;
-    Integer lastOdometer = vehicle.getOdometer() != null ? vehicle.getOdometer() : 0;
-
-    // YALNIZCA GİREN KM MEVCUT KM'DEN KÜÇÜKSE HATA VER (Ama biz 0 kabul edip geçiyoruz)
-    if (incomingKm > 0 && incomingKm < lastOdometer) {
-      // throw new BusinessException(Messages.SERVICE_FORM_KM_INVALID); // (İstersen aktif edersin)
-    }
 
     ServiceForm serviceForm = serviceFormMapper.toServiceForm(request);
     serviceForm.setAppointmentId(appointmentId);
     serviceForm.setCreatedBy(userId);
     serviceForm.setCreatedAt(LocalDateTime.now());
-
-    // Müşteriyi araçtan alıp forma atıyoruz
     serviceForm.setCustomerId(customer.getId());
 
     ServiceForm savedForm = serviceFormRepository.save(serviceForm);
+    
+    // Randevu durumunu GÜNCELLE
+    Appointment appointment = appointmentOptional.get();
+    appointment.setStatus(AppointmentStatus.CONVERTED);
+    appointment.setUpdatedAt(LocalDateTime.now());
+    appointmentRepository.save(appointment);
 
     String auditDetails = String.format(
-            "Randevudan servis formu oluşturuldu: appointmentID=%d, vehicleID=%d, currentKm=%d, description=%s",
-            appointmentId,
-            request.getVehicleId(),
-            incomingKm,
-            request.getDescription() // complaints yerine description
+            "Randevudan servis formu oluşturuldu: appointmentID=%d, vehicleID=%d, currentKm=%d",
+            appointmentId, request.getVehicleId(), incomingKm
     );
     auditLogService.log(userId, "SERVICE_FORM_CREATED_FROM_APPOINTMENT", "SERVICE_FORM", savedForm.getId(), auditDetails);
 
@@ -130,28 +129,21 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.VEHICLE_DELETED);
     }
 
-    // Customer doğrulamasını atlıyoruz, araç üzerinden alıyoruz
     Customer customer = vehicle.getCustomer();
     if (customer == null || customer.getDeletedAt() != null) {
       throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
 
-    Integer incomingKm = request.getCurrentKm() != null ? request.getCurrentKm() : 0;
-
     ServiceForm serviceForm = serviceFormMapper.toServiceForm(request);
     serviceForm.setCreatedBy(userId);
     serviceForm.setCreatedAt(LocalDateTime.now());
-
-    // Müşteriyi araçtan alıp forma atıyoruz
     serviceForm.setCustomerId(customer.getId());
 
     ServiceForm savedForm = serviceFormRepository.save(serviceForm);
 
     String auditDetails = String.format(
-            "Doğrudan servis formu oluşturuldu: vehicleID=%d, currentKm=%d, description=%s",
-            request.getVehicleId(),
-            incomingKm,
-            request.getDescription() // complaints yerine description
+            "Doğrudan servis formu oluşturuldu: vehicleID=%d, currentKm=%d",
+            request.getVehicleId(), request.getCurrentKm()
     );
     auditLogService.log(userId, "SERVICE_FORM_CREATED_DIRECTLY", "SERVICE_FORM", savedForm.getId(), auditDetails);
 
@@ -168,13 +160,17 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
-    if (serviceFormOptional.isEmpty()) {
-      throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
-    }
+    ServiceForm serviceForm = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId)
+        .orElseThrow(() -> new BusinessException(Messages.SERVICE_FORM_NOT_FOUND));
 
-    ServiceForm serviceForm = serviceFormOptional.get();
-    return serviceFormMapper.toServiceFormResponseDto(serviceForm);
+    ServiceFormResponseDto dto = serviceFormMapper.toServiceFormResponseDto(serviceForm);
+    
+    List<ServiceFormItem> items = serviceFormItemRepository.findByServiceFormIdAndDeletedAtIsNull(serviceFormId);
+    dto.setServiceFormItems(items.stream()
+        .map(serviceFormItemMapper::toResponseDto)
+        .collect(Collectors.toList()));
+        
+    return dto;
   }
 
   @Override
@@ -200,11 +196,6 @@ public class ServiceFormServiceImpl implements ServiceFormService {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
 
-    Optional<Vehicle> vehicleOptional = vehicleRepository.findById(vehicleId);
-    if (vehicleOptional.isEmpty()) {
-      throw new BusinessException(Messages.VEHICLE_NOT_FOUND);
-    }
-
     Page<ServiceForm> serviceForms = serviceFormRepository.findByVehicleIdAndDeletedAtIsNull(vehicleId, pageable);
     return serviceForms.map(serviceFormMapper::toServiceFormResponseDto);
   }
@@ -217,11 +208,6 @@ public class ServiceFormServiceImpl implements ServiceFormService {
   ) {
     if (customerId == null || pageable == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
-    }
-
-    Optional<Customer> customerOptional = customerRepository.findByIdAndDeletedAtIsNull(customerId);
-    if (customerOptional.isEmpty()) {
-      throw new BusinessException(Messages.CUSTOMER_NOT_FOUND);
     }
 
     Page<ServiceForm> serviceForms = serviceFormRepository.findByCustomerIdAndDeletedAtIsNull(customerId, pageable);
@@ -237,37 +223,18 @@ public class ServiceFormServiceImpl implements ServiceFormService {
     if (serviceFormId == null || request == null) {
       throw new BusinessException(Messages.INVALID_REQUEST);
     }
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
-    if (serviceFormOptional.isEmpty()) {
-      throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
-    }
-
-    ServiceForm serviceForm = serviceFormOptional.get();
+    ServiceForm serviceForm = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId)
+        .orElseThrow(() -> new BusinessException(Messages.SERVICE_FORM_NOT_FOUND));
 
     if (serviceForm.getIsLocked() != null && serviceForm.getIsLocked()) {
       throw new BusinessException(Messages.SERVICE_FORM_LOCKED);
     }
-
-    if (serviceForm.getDeletedAt() != null) {
-      throw new BusinessException(Messages.SERVICE_FORM_DELETED);
-    }
-
-    Integer oldKm = serviceForm.getCurrentKm();
 
     serviceFormMapper.updateServiceForm(request, serviceForm);
     serviceForm.setUpdatedBy(userId);
     serviceForm.setUpdatedAt(LocalDateTime.now());
 
     ServiceForm updatedForm = serviceFormRepository.save(serviceForm);
-
-    String auditDetails = String.format(
-            "Servis formu güncellendi: km=%d→%d, complaints=%s",
-            oldKm,
-            updatedForm.getCurrentKm(),
-            updatedForm.getComplaints()
-    );
-    auditLogService.log(userId, "SERVICE_FORM_UPDATED", "SERVICE_FORM", updatedForm.getId(), auditDetails);
-
     return serviceFormMapper.toServiceFormResponseDto(updatedForm);
   }
 
@@ -276,55 +243,23 @@ public class ServiceFormServiceImpl implements ServiceFormService {
           Integer serviceFormId,
           Integer userId
   ) {
-    if (serviceFormId == null) {
-      throw new BusinessException(Messages.INVALID_REQUEST);
-    }
-
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
-    if (serviceFormOptional.isEmpty()) {
-      throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
-    }
-
-    ServiceForm serviceForm = serviceFormOptional.get();
-
-    if (serviceForm.getDeletedAt() != null) {
-      throw new BusinessException(Messages.SERVICE_FORM_ALREADY_DELETED);
-    }
+    ServiceForm serviceForm = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId)
+        .orElseThrow(() -> new BusinessException(Messages.SERVICE_FORM_NOT_FOUND));
 
     LocalDateTime now = LocalDateTime.now();
     serviceForm.setDeletedAt(now);
     serviceForm.setDeletedBy(userId);
-
     serviceFormRepository.save(serviceForm);
-
-    String auditDetails = String.format(
-            "Servis formu silindi (soft delete): ID=%d, status=%s",
-            serviceForm.getId(),
-            serviceForm.getStatus()
-    );
-    auditLogService.log(userId, "SERVICE_FORM_DELETED", "SERVICE_FORM", serviceFormId, auditDetails);
   }
 
   @Override
   @Transactional
   public void completeServiceForm(Integer serviceFormId, Integer userId) {
-    if (serviceFormId == null) {
-      throw new BusinessException(Messages.INVALID_REQUEST);
-    }
-
-    Optional<ServiceForm> serviceFormOptional = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId);
-    if (serviceFormOptional.isEmpty()) {
-      throw new BusinessException(Messages.SERVICE_FORM_NOT_FOUND);
-    }
-
-    ServiceForm serviceForm = serviceFormOptional.get();
+    ServiceForm serviceForm = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId)
+        .orElseThrow(() -> new BusinessException(Messages.SERVICE_FORM_NOT_FOUND));
 
     if (serviceForm.getStatus() == ServiceFormStatus.COMPLETED) {
       throw new BusinessException("Servis formu zaten kapatildi", org.springframework.http.HttpStatus.CONFLICT);
-    }
-
-    if (serviceForm.getDeletedAt() != null) {
-      throw new BusinessException(Messages.SERVICE_FORM_DELETED);
     }
 
     boolean hasIncompleteItems = serviceFormItemRepository.existsByServiceFormIdAndStatusNot(
@@ -339,51 +274,20 @@ public class ServiceFormServiceImpl implements ServiceFormService {
     serviceForm.setStatus(ServiceFormStatus.COMPLETED);
     serviceForm.setUpdatedBy(userId);
     serviceForm.setUpdatedAt(LocalDateTime.now());
-
     serviceFormRepository.save(serviceForm);
-
-    String auditDetails = String.format(
-            "Servis formu kapatildi (completed): ID=%d, totalAmount=%s, totalTax=%s",
-            serviceFormId,
-            serviceForm.getTotalAmount(),
-            serviceForm.getTotalTax()
-    );
-    auditLogService.log(userId, "SERVICE_FORM_COMPLETED", "SERVICE_FORM", serviceFormId, auditDetails);
   }
 
   @Override
   @Transactional
   public ServiceFormResponseDto assignStaff(Integer serviceFormId, Integer staffId, Integer userId) {
-    if (serviceFormId == null) {
-      throw new BusinessException(Messages.INVALID_REQUEST);
-    }
-
     ServiceForm serviceForm = serviceFormRepository.findByIdAndDeletedAtIsNull(serviceFormId)
         .orElseThrow(() -> new BusinessException(Messages.SERVICE_FORM_NOT_FOUND));
-
-    if (serviceForm.getIsLocked() != null && serviceForm.getIsLocked()) {
-      throw new BusinessException(Messages.SERVICE_FORM_LOCKED);
-    }
-    if (serviceForm.getStatus() == ServiceFormStatus.COMPLETED) {
-      throw new BusinessException(Messages.SERVICE_FORM_COMPLETED);
-    }
-
-    if (staffId != null) {
-      Staff staff = staffRepository.findById(staffId)
-          .orElseThrow(() -> new BusinessException("Staff bulunamadi", org.springframework.http.HttpStatus.NOT_FOUND));
-      if (staff.getDeletedAt() != null || staff.getUser() == null || !staff.getUser().isActive()) {
-        throw new BusinessException("Aktif staff bulunamadi", org.springframework.http.HttpStatus.NOT_FOUND);
-      }
-    }
 
     serviceForm.setAssignedStaffId(staffId);
     serviceForm.setUpdatedBy(userId);
     serviceForm.setUpdatedAt(LocalDateTime.now());
 
     ServiceForm savedForm = serviceFormRepository.save(serviceForm);
-    auditLogService.log(userId, "SERVICE_FORM_STAFF_ASSIGNED", "SERVICE_FORM", serviceFormId,
-        "Assigned staff: " + staffId);
-
     return serviceFormMapper.toServiceFormResponseDto(savedForm);
   }
 }

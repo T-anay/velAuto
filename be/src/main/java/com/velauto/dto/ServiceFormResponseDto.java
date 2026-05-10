@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -35,6 +36,7 @@ public class ServiceFormResponseDto {
 
   private BigDecimal totalAmount;
 
+  private List<ServiceFormItemResponseDto> serviceFormItems;
 
   private Integer createdBy;
 
@@ -44,4 +46,3 @@ public class ServiceFormResponseDto {
 
   private LocalDateTime updatedAt;
 }
-

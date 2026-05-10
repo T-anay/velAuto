@@ -88,10 +88,23 @@ export default function AppointmentsAdmin() {
     if (viewMode === 'DAILY') {
       return { from: base, to: endOfDay(base) };
     }
-    const from = startOfDay(base);
-    const to = new Date(from);
-    to.setDate(to.getDate() + 6);
-    return { from, to: endOfDay(to) };
+    if (viewMode === 'WEEKLY') {
+      const from = startOfDay(base);
+      const to = new Date(from);
+      to.setDate(to.getDate() + 6);
+      return { from, to: endOfDay(to) };
+    }
+    if (viewMode === 'MONTHLY') {
+      const from = new Date(base.getFullYear(), base.getMonth(), 1);
+      const to = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+      return { from, to: endOfDay(to) };
+    }
+    if (viewMode === 'YEARLY') {
+      const from = new Date(base.getFullYear(), 0, 1);
+      const to = new Date(base.getFullYear(), 11, 31);
+      return { from, to: endOfDay(to) };
+    }
+    return { from: base, to: endOfDay(base) };
   }, [selectedDate, viewMode]);
 
   const filteredAppointments = useMemo(() => {
@@ -159,7 +172,7 @@ export default function AppointmentsAdmin() {
       <div>
         <p className="text-[10px] uppercase tracking-[0.35em] text-[var(--text-muted)] font-black">Takvim Paneli</p>
         <h1 className="text-3xl font-black text-[var(--text-primary)] mt-2">Randevu Takvimi</h1>
-        <p className="text-[var(--text-secondary)] mt-2">Günlük/haftalık yoğunluğu izle, hızlı onay/red ver veya randevuyu revize et.</p>
+        <p className="text-[var(--text-secondary)] mt-2">Günlük/haftalık/aylık/yıllık yoğunluğu izle, hızlı onay/red ver veya randevuyu revize et.</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -174,6 +187,8 @@ export default function AppointmentsAdmin() {
           <select value={viewMode} onChange={(e) => setViewMode(e.target.value)} className="p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]">
             <option value="DAILY">Günlük Görünüm</option>
             <option value="WEEKLY">Haftalık Görünüm</option>
+            <option value="MONTHLY">Aylık Görünüm</option>
+            <option value="YEARLY">Yıllık Görünüm</option>
           </select>
           <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)]" />
           <div className="p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-sm text-[var(--text-secondary)]">

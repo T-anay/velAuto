@@ -9,8 +9,6 @@ const menuItems = [
   { path: '/active-jobs', label: ' Aktif İşler' },
   { path: '/appointments', label: ' Takvim' },
   { path: '/customers', label: ' Müşteriler' },
-
-
   { path: '/bildirimler', label: ' Bildirimler' },
 ];
 
