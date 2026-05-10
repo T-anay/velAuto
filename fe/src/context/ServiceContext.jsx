@@ -1,4 +1,9 @@
+<<<<<<< Updated upstream
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+=======
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+>>>>>>> Stashed changes
 import {
   api,
   clearStoredTokens,
@@ -62,15 +67,51 @@ const extractCollection = (payload) => {
   if (!payload || typeof payload !== 'object') return [];
   return payload.content || payload.items || payload.data || payload.results || payload.list || [];
 };
+ 
+const normalizePhoneForDisplay = (phone) => {
+  if (!phone) return '';
+  let cleaned = String(phone).replace(/\D/g, '');
+  if (cleaned.length > 0 && cleaned.replace(/0/g, '') === '') return '';
+  
+  if (cleaned.length > 10 && cleaned.startsWith('90')) cleaned = cleaned.slice(2);
+  if (cleaned.length > 10 && cleaned.startsWith('0')) cleaned = cleaned.slice(1);
+  if (cleaned.length > 10) cleaned = cleaned.slice(-10);
+  
+  // En azından 10 hane kaldıysa başına 0 ekle (Türkiye formatı)
+  let val = cleaned.length === 10 ? '0' + cleaned : cleaned;
+  
+  let formatted = '';
+  if (val.length > 0) formatted += val.substring(0, 4);
+  if (val.length > 4) formatted += ' ' + val.substring(4, 7);
+  if (val.length > 7) formatted += ' ' + val.substring(7, 9);
+  if (val.length > 9) formatted += ' ' + val.substring(9, 11);
+  return formatted || val;
+};
 
-const normalizeUser = (profile, fallbackEmail = '') => ({
-  id: profile?.id ?? profile?.userId ?? profile?.sub ?? fallbackEmail,
-  email: normalizeText(profile?.email, fallbackEmail),
-  fullName: normalizeText(profile?.fullName, profile?.name, profile?.username, profile?.firstName, fallbackEmail),
-  phone: normalizeText(profile?.phone, profile?.phoneNumber),
-  role: normalizeText(profile?.role, profile?.authority, profile?.type, 'USER'),
-  raw: profile || null,
-});
+const normalizeUser = (profile, fallbackEmail = '') => {
+  const firstName = profile?.firstName || '';
+  const lastName = profile?.lastName || '';
+  const combinedName = [firstName, lastName].filter(Boolean).join(' ');
+
+  const phone = [
+    profile?.phone,
+    profile?.phoneNumber,
+    profile?.mobile,
+    profile?.contactNumber
+  ].find(p => {
+    const d = normalizePhoneForDisplay(p);
+    return d && d.replace(/\D/g, '').replace(/0/g, '') !== '';
+  }) || profile?.phone || profile?.phoneNumber || '';
+
+  return {
+    id: profile?.id ?? profile?.userId ?? profile?.sub ?? fallbackEmail,
+    email: normalizeText(profile?.email, fallbackEmail),
+    fullName: normalizeText(profile?.fullName, profile?.name, combinedName, profile?.username, firstName, fallbackEmail),
+    phone: normalizePhoneForDisplay(phone),
+    role: normalizeText(profile?.role, profile?.authority, profile?.type, 'USER'),
+    raw: profile || null,
+  };
+};
 
 const buildPendingPayment = (job) => ({
   id: `pending-${job.id}`,
@@ -156,6 +197,14 @@ export const ServiceProvider = ({ children }) => {
   const [isBootstrapping, setIsBootstrapping] = useState(Boolean(savedTokens.accessToken || savedTokens.refreshToken));
   const [error, setError] = useState('');
   const [isLoadingJob, setIsLoadingJob] = useState(false);
+<<<<<<< Updated upstream
+=======
+  const [staff, setStaff] = useState([]);
+ 
+  const lastSyncRef = useRef(0);
+  const syncPromiseRef = useRef(null);
+
+>>>>>>> Stashed changes
 
   useEffect(() => saveJson(CACHE_KEYS.user, user), [user]);
   useEffect(() => saveJson(CACHE_KEYS.jobs, jobs), [jobs]);
@@ -164,6 +213,11 @@ export const ServiceProvider = ({ children }) => {
   useEffect(() => saveJson(CACHE_KEYS.appointments, appointments), [appointments]);
   useEffect(() => saveJson(CACHE_KEYS.payments, payments), [payments]);
   useEffect(() => saveJson(CACHE_KEYS.serviceCatalog, serviceCatalog), [serviceCatalog]);
+<<<<<<< Updated upstream
+=======
+  useEffect(() => saveJson(CACHE_KEYS.appointmentOverrides, appointmentOverrides), [appointmentOverrides]);
+
+>>>>>>> Stashed changes
 
   // Normalize any cached jobs/appointments on mount so older caches still have status metadata
   useEffect(() => {
@@ -197,7 +251,16 @@ export const ServiceProvider = ({ children }) => {
     return true;
   }, []);
 
-  const syncRemoteData = useCallback(async () => {
+  const syncRemoteData = useCallback(async (force = false) => {
+    // Halihazırda bir çekme işlemi varsa aynı promise'i dön (Request deduplication)
+    if (syncPromiseRef.current) return syncPromiseRef.current;
+
+    // Eğer force (zorunlu) değilse ve son sync üzerinden 30 saniye geçmediyse atla (Throttling)
+    const now = Date.now();
+    if (!force && (now - lastSyncRef.current < 30000)) {
+      return;
+    }
+
     const tokens = getStoredTokens();
     if (!tokens.accessToken && !tokens.refreshToken) {
       setIsBootstrapping(false);
@@ -207,44 +270,70 @@ export const ServiceProvider = ({ children }) => {
     setIsBootstrapping(true);
     setError('');
 
+<<<<<<< Updated upstream
     try {
       if (!tokens.accessToken && tokens.refreshToken) {
         await refreshToken(tokens.refreshToken);
       }
+=======
+    syncPromiseRef.current = (async () => {
+      try {
+        if (!tokens.accessToken && tokens.refreshToken) {
+          await refreshToken(tokens.refreshToken);
+        }
 
-      const storedUserStr = localStorage.getItem('user');
-      const storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
-      const tenantId = storedUser?.tenantId || 1;
+        const storedUserStr = localStorage.getItem('user');
+        const storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
+        const tenantId = storedUser?.tenantId || 1;
+>>>>>>> Stashed changes
 
-      const query = `?page=0&size=50&tenantId=${tenantId}`;
+        const query = `?page=0&size=50&tenantId=${tenantId}`;
 
-      const [profileResponse, customersResponse, vehiclesResponse, appointmentsResponse, serviceFormsResponse, catalogResponse] = await Promise.all([
-        api.auth.me().catch(() => null),
-        api.customers.list(query).catch(() => []),
-        api.vehicles.list(query).catch(() => []),
-        api.appointments.list(query).catch(() => []),
-        api.serviceForms.list(query).catch(() => []),
-        api.serviceCatalog.list(query).catch(() => []), // Doğru endpoint: serviceCatalog (s takısı yok)
-      ]);
+        const [profileResponse, customersResponse, vehiclesResponse, appointmentsResponse, serviceFormsResponse, catalogResponse, staffResponse] = await Promise.all([
+          api.auth.me().catch(() => null),
+          api.customers.list(query).catch(() => []),
+          api.vehicles.list(query).catch(() => []),
+          api.appointments.list(query).catch(() => []),
+          api.serviceForms.list(query).catch(() => []),
+          api.serviceCatalog.list(query).catch(() => []),
+          api.staff.list().catch(() => []),
+        ]);
 
-      const normalizedCustomers = extractCollection(customersResponse).map(normalizeCustomer);
-      const normalizedVehicles = extractCollection(vehiclesResponse);
-      const normalizedAppointmentsRaw = extractCollection(appointmentsResponse);
-      const normalizedServiceFormsRaw = extractCollection(serviceFormsResponse);
-      const normalizedCatalog = extractCollection(catalogResponse).map(normalizeServiceCatalogItem);
+        const normalizedCustomers = extractCollection(customersResponse).map(normalizeCustomer);
+        const normalizedVehicles = extractCollection(vehiclesResponse);
+        const normalizedAppointmentsRaw = extractCollection(appointmentsResponse);
+        const normalizedServiceFormsRaw = extractCollection(serviceFormsResponse);
+        const normalizedCatalog = extractCollection(catalogResponse).map(normalizeServiceCatalogItem);
+        const normalizedStaff = extractCollection(staffResponse).map(s => ({
+          ...s,
+          phone: normalizePhoneForDisplay(s.phone || s.phoneNumber)
+        }));
 
+        normalizedCustomers.forEach(customer => { if (!customer.plate) { const customerVehicle = normalizedVehicles.find(v => String(v.customerId) === String(customer.id) || String(v.customer?.id) === String(customer.id)); if (customerVehicle && customerVehicle.plate) { customer.plate = customerVehicle.plate; } } });
+
+<<<<<<< Updated upstream
       const customerLookup = new Map(normalizedCustomers.map((customer) => [String(customer.id), customer]));
       const vehicleLookup = new Map(normalizedVehicles.map((vehicle) => [String(vehicle.id), vehicle]));
+=======
+        const customerLookup = new Map(normalizedCustomers.map((customer) => [String(customer.id), customer]));
+        const vehicleLookup = new Map(normalizedVehicles.map((vehicle) => [String(vehicle.id), vehicle]));
 
-      const normalizedAppointments = normalizedAppointmentsRaw.map((appointment) => normalizeAppointment(appointment, customerLookup, vehicleLookup));
-      const normalizedJobs = normalizeJobList(normalizedServiceFormsRaw, normalizedCustomers, normalizedVehicles);
+        const normalizedAppointments = normalizedAppointmentsRaw.map((appointment) => normalizeAppointment(appointment, customerLookup, vehicleLookup));
+        const normalizedJobs = normalizeJobList(normalizedServiceFormsRaw, normalizedCustomers, normalizedVehicles);
+>>>>>>> Stashed changes
 
-      // Attach localized status metadata for UI (statusKey, statusLabel) while preserving `status` for logic
-      const enrichedAppointments = (normalizedAppointments || []).map((a) => {
-        const meta = deriveJobStatus(a.status || a.type || a.statusRaw || 'PENDING');
-        return { ...a, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
-      });
+        // Attach localized status metadata for UI (statusKey, statusLabel) while preserving `status` for logic
+        const enrichedAppointments = (normalizedAppointments || []).map((a) => {
+          const meta = deriveJobStatus(a.status || a.type || a.statusRaw || 'PENDING');
+          return { ...a, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
+        });
 
+        const enrichedJobs = (normalizedJobs || []).map((j) => {
+          const meta = deriveJobStatus(j.status || j.statusKey || j.raw?.status || j.type || 'IN_PROGRESS');
+          return { ...j, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
+        });
+
+<<<<<<< Updated upstream
       const enrichedJobs = (normalizedJobs || []).map((j) => {
         const meta = deriveJobStatus(j.status || j.statusKey || j.raw?.status || j.type || 'IN_PROGRESS');
         return { ...j, statusKey: meta.key || meta.status, statusLabel: meta.label || meta.status, status: meta.status, color: meta.color };
@@ -285,17 +374,51 @@ export const ServiceProvider = ({ children }) => {
 
     api.auth.me()
       .then(profileResponse => {
+=======
+>>>>>>> Stashed changes
         const cachedUser = loadJsonValue([CACHE_KEYS.user], null);
         setUser(normalizeUser(profileResponse, cachedUser?.email || ''));
-      })
-      .catch((err) => {
-        console.warn("Oturum doğrulanamadı, token süresi dolmuş olabilir.", err);
-      })
-      .finally(() => {
-        setIsBootstrapping(false);
-      });
+        setCustomers(normalizedCustomers);
+        setVehicles(normalizedVehicles);
+        setAppointments(enrichedAppointments);
 
-  }, []);
+        // Akıllı Birleştirme: Lokaldeki henüz backend'e tam yansımamış işleri koru
+        setJobs((prev) => {
+          const localOnlyJobs = prev.filter(p => typeof p.id === 'string' && p.id.startsWith('temp-'));
+          const backendJobIds = new Set(enrichedJobs.map(j => String(j.id)));
+          const uniqueLocalJobs = localOnlyJobs.filter(l => !backendJobIds.has(String(l.id)));
+          return [...enrichedJobs, ...uniqueLocalJobs];
+        });
+
+        setServiceCatalog(normalizedCatalog);
+        setStaff(normalizedStaff);
+
+        setPayments((currentPayments) => {
+          const queue = Array.isArray(currentPayments) ? currentPayments : [];
+          const jobIds = new Set(enrichedJobs.map((job) => String(job.id)));
+          return queue.filter((payment) => jobIds.has(String(payment.serviceFormId ?? payment.id)) || payment.status === 'PENDING');
+        });
+
+        lastSyncRef.current = Date.now();
+      } catch (syncError) {
+        setError(syncError.message || 'Veriler yüklenemedi.');
+        pushToast({
+          type: 'warning',
+          title: 'Veri senkronu tamamlanamadı',
+          message: 'Yerel kayıtlar kullanılmaya devam ediyor.',
+        });
+      } finally {
+        setIsBootstrapping(false);
+        syncPromiseRef.current = null;
+      }
+    })();
+
+    return syncPromiseRef.current;
+  }, [appointments.length, jobs.length, user?.raw?.tenantId]);
+
+  useEffect(() => {
+    syncRemoteData();
+  }, [syncRemoteData]);
 
   const ensureCustomer = useCallback(async ({ fullName, phone, plate, email, address, notes }) => {
     const normalizedPlate = normalizePlate(plate);
@@ -381,7 +504,17 @@ export const ServiceProvider = ({ children }) => {
   }, [customers, user?.raw?.tenantId, vehicles]);
 
   const login = useCallback(async (backendUser) => {
-    const normalizedUser = normalizeUser(backendUser, backendUser?.email);
+    // Login response (AuthResponseDto) genellikle minimal veri içerir (userId, role, tokens).
+    // Kullanıcının ad, soyad ve diğer detaylarını görmek için /me endpoint'ini de çağıralım.
+    let fullProfile = backendUser;
+    try {
+      const profileData = await api.auth.me();
+      fullProfile = { ...backendUser, ...profileData };
+    } catch (err) {
+      console.warn('Giriş sonrası profil detayları alınamadı, temel veri ile devam ediliyor.', err);
+    }
+
+    const normalizedUser = normalizeUser(fullProfile, backendUser?.email);
     setUser(normalizedUser);
     return { success: true, user: normalizedUser };
   }, []);
@@ -808,14 +941,88 @@ export const ServiceProvider = ({ children }) => {
 
   const updateUserProfile = useCallback(async (payload) => {
     const currentRaw = user?.raw || {};
-    const response = await api.auth.updateProfile(payload).catch(() => null);
-    const mergedRaw = { ...currentRaw, ...payload, ...(response || {}) };
+    const normalizedPhone = normalizePhoneForBackend(payload.phone);
+    
+    // Backend'in hangi alanı beklediğinden emin olmak için tüm varyasyonları gönderiyoruz
+    const normalizedPayload = {
+      ...payload,
+      phone: normalizedPhone,
+      phoneNumber: normalizedPhone,
+      mobile: normalizedPhone,
+      fullName: `${payload.firstName || ''} ${payload.lastName || ''}`.trim()
+    };
+    
+    const response = await api.auth.updateProfile(normalizedPayload);
+    const mergedRaw = { ...currentRaw, ...normalizedPayload, ...(response || {}) };
     const normalized = normalizeUser(mergedRaw, user?.email || '');
     normalized.raw = mergedRaw;
     setUser(normalized);
+    
+    // Profili güncelledikten sonra staff listesini ve diğer verileri de tazele
+    await syncRemoteData(true);
+    
     pushToast({ type: 'success', title: 'Profil güncellendi', message: 'Kullanıcı bilgileri kaydedildi.' });
     return { success: true, user: normalized };
-  }, [user]);
+  }, [syncRemoteData, user]);
+
+  const addStaff = useCallback(async (form) => {
+    const requestData = {
+      fullName: `${form.firstName.trim()} ${form.lastName.trim()}`,
+      email: form.email.trim(),
+      phone: normalizePhoneForBackend(form.phone),
+      role: form.role
+    };
+
+    await api.staff.create(requestData);
+    await syncRemoteData(true);
+    pushToast({ type: 'success', title: 'Personel eklendi', message: `${form.firstName} başarıyla veritabanına kaydedildi.` });
+    return { success: true };
+  }, [syncRemoteData]);
+
+  const updateStaff = useCallback(async (id, patch) => {
+    const targetMember = staff.find(m => m.id === id);
+    if (targetMember && targetMember.role === 'SUPER_ADMIN') {
+      pushToast({ type: 'error', title: 'İşlem Reddedildi', message: 'Sistem Yöneticisi üzerinde değişiklik yapılamaz!' });
+      return { success: false };
+    }
+
+    // Optimistik güncelleme
+    const previousStaff = [...staff];
+    setStaff((prev) => prev.map((member) => (member.id === id ? { ...member, ...patch } : member)));
+
+    try {
+      const payload = { ...targetMember, ...patch };
+      // Telefon varsa onu da normalize et
+      if (payload.phone) payload.phone = normalizePhoneForBackend(payload.phone);
+      
+      await api.staff.update(id, payload);
+      
+      if (Object.prototype.hasOwnProperty.call(patch, 'active')) {
+        pushToast({
+          type: patch.active ? 'success' : 'info',
+          title: patch.active ? 'Personel aktif edildi' : 'Personel pasifleştirildi',
+          message: 'Yetki durumu veritabanında güncellendi.',
+        });
+      }
+      return { success: true };
+    } catch (err) {
+      setStaff(previousStaff);
+      pushToast({ type: 'error', title: 'Hata', message: err.message });
+      return { success: false, error: err.message };
+    }
+  }, [staff]);
+
+  const deleteStaff = useCallback(async (id) => {
+    try {
+      await api.staff.remove(id);
+      setStaff((prev) => prev.filter((member) => member.id !== id));
+      pushToast({ type: 'success', title: 'Personel Silindi', message: 'Kayıt veritabanından kalıcı olarak kaldırıldı.' });
+      return { success: true };
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Hata', message: err.message });
+      return { success: false, error: err.message };
+    }
+  }, []);
 
   const changeUserPassword = useCallback(async (payload) => {
     await api.auth.changePassword(payload);
@@ -885,6 +1092,18 @@ export const ServiceProvider = ({ children }) => {
     updateJob,
     user,
     vehicles,
+<<<<<<< Updated upstream
+=======
+    setAppointmentOverride,
+    getAppointmentStatus,
+    updateServiceItemStatus,
+    completeServiceForm,
+    assignServiceFormStaff,
+    staff,
+    addStaff,
+    updateStaff,
+    deleteStaff,
+>>>>>>> Stashed changes
   ]);
 
   return (

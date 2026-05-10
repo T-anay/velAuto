@@ -4,14 +4,18 @@ import { useService } from '../context/ServiceContext';
 import StatCard from '../components/StatCard';
 
 export default function Dashboard() {
+<<<<<<< Updated upstream
   const { jobs = [], appointments = [], customers = [], vehicles = [], payments = [], syncRemoteData, isBootstrapping } = useService();
+=======
+  const { jobs = [], appointments = [], payments = [], refreshData, isBootstrapping } = useService();
+>>>>>>> Stashed changes
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
     if (isRefreshing || isBootstrapping) return;
     setIsRefreshing(true);
     try {
-      await syncRemoteData();
+      await refreshData(true);
     } finally {
       setIsRefreshing(false);
     }

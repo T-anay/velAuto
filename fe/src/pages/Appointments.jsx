@@ -6,7 +6,30 @@ import { carBrands } from '../constants/carData'; // DİKKAT: Bu importun yolu p
 
 export default function Appointments() {
     const navigate = useNavigate();
+<<<<<<< Updated upstream
     const { appointments, approveAppointment, addAppointment, deleteAppointment, isValidTurkishPlate } = useService();
+=======
+    const { appointments, approveAppointment, addAppointment, deleteAppointment, customers, addJob, setAppointmentOverride, getAppointmentStatus, refreshData, reviseAppointment } = useService();
+
+    
+    useEffect(() => {
+        if (refreshData) refreshData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); 
+
+
+
+
+    const handleCustomerSelect = (selected) => {
+        if (!selected) return;
+        setFormValues(prev => ({
+            ...prev,
+            customer: selected.fullName || selected.name || '',
+            phone: String(selected.phone || '').replace(/\D/g, '').slice(-10),
+            plate: selected.plate || prev.plate,
+        }));
+    };
+>>>>>>> Stashed changes
 
     const formatDateTimeLocal = (date = new Date()) => {
         const value = new Date(date);

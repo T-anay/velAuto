@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useService } from '../context/ServiceContext';
 import { adminModuleList, adminModules } from '../constants/adminModules';
@@ -8,6 +8,8 @@ export default function Profile() {
   const shortcutModules = adminModuleList.filter((item) => item.path !== adminModules.profile.path);
 
   const [profileForm, setProfileForm] = useState({
+    firstName: user?.raw?.firstName || '',
+    lastName: user?.raw?.lastName || '',
     phone: user?.phone || '',
     email: user?.email || '',
     address: user?.raw?.address || '',
@@ -25,6 +27,31 @@ export default function Profile() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+
+  const handlePhoneChange = (e) => {
+    let val = e.target.value.replace(/\D/g, '');
+    if (val.length > 11) val = val.slice(0, 11);
+
+    let formatted = '';
+    if (val.length > 0) formatted += val.substring(0, 4);
+    if (val.length > 4) formatted += ' ' + val.substring(4, 7);
+    if (val.length > 7) formatted += ' ' + val.substring(7, 9);
+    if (val.length > 9) formatted += ' ' + val.substring(9, 11);
+
+    setProfileForm((prev) => ({ ...prev, phone: formatted }));
+  };
+
+  useEffect(() => {
+    if (isProfileModalOpen && user) {
+      setProfileForm({
+        firstName: user?.raw?.firstName || '',
+        lastName: user?.raw?.lastName || '',
+        phone: user?.phone || '',
+        email: user?.email || '',
+        address: user?.raw?.address || '',
+      });
+    }
+  }, [isProfileModalOpen, user]);
 
   const fullName = user?.fullName || user?.raw?.name || 'Personel';
   const role = user?.role || user?.raw?.role || 'STAFF';
@@ -52,17 +79,17 @@ export default function Profile() {
     setProfileMessage('');
     setProfileError('');
 
-    if (!profileForm.phone.trim() && !profileForm.email.trim()) {
-      setProfileError('En az bir iletişim alanı doldurulmalı.');
+    if (!profileForm.firstName.trim() || !profileForm.lastName.trim() || !profileForm.phone.trim()) {
+      setProfileError('Ad, soyad ve telefon alanları zorunludur.');
       return;
     }
 
     try {
       setSavingProfile(true);
       await updateUserProfile({
+        firstName: profileForm.firstName,
+        lastName: profileForm.lastName,
         phone: profileForm.phone,
-        email: profileForm.email,
-        address: profileForm.address,
       });
       setProfileMessage('Profil bilgileri güncellendi.');
     } catch (error) {
@@ -95,8 +122,9 @@ export default function Profile() {
     try {
       setSavingPassword(true);
       await changeUserPassword({
-        currentPassword: passwordForm.currentPassword,
+        oldPassword: passwordForm.currentPassword,
         newPassword: passwordForm.newPassword,
+        newPasswordConfirm: passwordForm.confirmPassword,
       });
       setPasswordMessage('Parola başarıyla güncellendi.');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -256,12 +284,37 @@ export default function Profile() {
             </div>
 
             <form onSubmit={onSubmitProfile} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">Ad</label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.firstName}
+                    onChange={(e) => setProfileForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                    className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                    placeholder="Ad"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">Soyad</label>
+                  <input
+                    type="text"
+                    required
+                    value={profileForm.lastName}
+                    onChange={(e) => setProfileForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                    className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+                    placeholder="Soyad"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">Telefon</label>
                 <input
                   type="text"
+                  required
                   value={profileForm.phone}
-                  onChange={(e) => setProfileForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  onChange={handlePhoneChange}
                   className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
                   placeholder="05XX XXX XX XX"
                 />
@@ -345,6 +398,7 @@ export default function Profile() {
                   onChange={(e) => setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
                   className="w-full mt-1 p-3 rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
                 />
+                <p className="text-[9px] text-[var(--text-muted)] mt-1">En az 8 karakter, 1 büyük harf, 1 küçük harf ve 1 rakam içermelidir.</p>
               </div>
               <div>
                 <label className="text-[10px] uppercase tracking-[0.25em] text-[var(--text-muted)] font-black">Yeni Şifre (Tekrar)</label>

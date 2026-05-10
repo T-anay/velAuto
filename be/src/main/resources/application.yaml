@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3307/velauto?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/velauto?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC&useSSL=false}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
     driver-class-name: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
@@ -21,7 +21,26 @@ spring:
     enabled: ${LIQUIBASE_ENABLED:true}
     change-log: ${LIQUIBASE_CHANGELOG:classpath:db/changelog/db.changelog-master.yaml}
     clear-checksums: true
+<<<<<<< Updated upstream
     drop-first: true  # Database'i tamamen reset etmek için true yapıldı
+=======
+    drop-first: false  # Database'i tamamen reset etmek için true yapıldı
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}  # <-- Buraya iki nokta eklendi (varsayılan boş)
+    password: ${MAIL_PASSWORD:}  # <-- Buraya iki nokta eklendi (varsayılan boş)
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+>>>>>>> Stashed changes
 
   # Gemini AI Konfigürasyonu
   ai:
@@ -40,6 +59,3 @@ app:
     secret: "${JWT_SECRET:velAutoSecretKeyForJwtSecurityVelAutoSecretKeyForJwtSecurity}"
     expiration-ms: ${JWT_EXPIRATION:3600000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION:86400000}
-
-
-

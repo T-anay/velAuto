@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useService } from '../context/ServiceContext';
 import { pushToast } from '../lib/toastBus';
+<<<<<<< Updated upstream
+=======
+import { useService } from '../context/ServiceContext';
+>>>>>>> Stashed changes
 
 const STORAGE_KEY = 'velauto_staff_v1';
 const ROLES = ['ADMIN', 'STAFF', 'SUPER_ADMIN'];
@@ -21,6 +25,7 @@ const loadStaff = () => {
 };
 
 export default function Staff() {
+<<<<<<< Updated upstream
   const { user } = useService();
   const [staff, setStaff] = useState(() => {
     const existing = loadStaff();
@@ -38,17 +43,60 @@ export default function Staff() {
     ];
   });
   const [form, setForm] = useState({ fullName: '', email: '', phone: '', role: 'STAFF', permissionScope: 'OWN_JOBS' });
+=======
+  const { staff, addStaff, updateStaff, deleteStaff, isBootstrapping, refreshData } = useService();
+  
+  // Custom Silme Modal'ı (Pop-up) için State
+  const [memberToDelete, setMemberToDelete] = useState(null);
+
+  const [form, setForm] = useState({ firstName: '', lastName: '', email: '', phone: '', role: 'STAFF' });
+>>>>>>> Stashed changes
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [error, setError] = useState('');
 
+<<<<<<< Updated upstream
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(staff));
   }, [staff]);
 
   const filteredStaff = useMemo(() => {
     return staff.filter((member) => {
+=======
+  // TELEFON FORMATLAYICI (Otomatik (5XX) XXX XX XX formatına çevirir)
+  const handlePhoneChange = (e) => {
+    // Sadece rakamları al
+    let val = e.target.value.replace(/\D/g, '');
+    
+    // Eğer kullanıcı 05... diye başlarsa baştaki 0'ı at
+    if (val.startsWith('0')) val = val.substring(1);
+    // Maksimum 10 haneye izin ver
+    if (val.length > 10) val = val.substring(0, 10);
+
+    let formatted = val;
+    if (val.length > 0) {
+      if (val.length <= 3) {
+        formatted = `${val}`;
+      } else if (val.length <= 6) {
+        formatted = `(${val.slice(0, 3)}) ${val.slice(3)}`;
+      } else if (val.length <= 8) {
+        formatted = `(${val.slice(0, 3)}) ${val.slice(3, 6)} ${val.slice(6)}`;
+      } else {
+        formatted = `(${val.slice(0, 3)}) ${val.slice(3, 6)} ${val.slice(6, 8)} ${val.slice(8, 10)}`;
+      }
+    }
+    setForm((prev) => ({ ...prev, phone: formatted }));
+  };
+
+  useEffect(() => {
+    refreshData(true);
+  }, []);
+
+  const filteredStaff = useMemo(() => {
+    return (staff || []).filter((member) => {
+      const fullName = `${member.firstName || ''} ${member.lastName || ''}`.toLowerCase();
+>>>>>>> Stashed changes
       const matchSearch =
         member.fullName.toLowerCase().includes(search.toLowerCase()) ||
         member.email.toLowerCase().includes(search.toLowerCase());
@@ -61,12 +109,17 @@ export default function Staff() {
   }, [roleFilter, search, staff, statusFilter]);
 
   const stats = useMemo(() => {
-    const activeCount = staff.filter((member) => member.active).length;
-    const adminCount = staff.filter((member) => member.role === 'ADMIN' || member.role === 'SUPER_ADMIN').length;
-    return { total: staff.length, active: activeCount, passive: staff.length - activeCount, admin: adminCount };
+    const safeStaff = staff || [];
+    const activeCount = safeStaff.filter((member) => member.active).length;
+    const adminCount = safeStaff.filter((member) => member.role === 'ADMIN' || member.role === 'SUPER_ADMIN').length;
+    return { total: safeStaff.length, active: activeCount, passive: safeStaff.length - activeCount, admin: adminCount };
   }, [staff]);
 
+<<<<<<< Updated upstream
   const handleAddStaff = (event) => {
+=======
+  const handleAddStaff = async (event) => {
+>>>>>>> Stashed changes
     event.preventDefault();
     setError('');
 
@@ -75,10 +128,19 @@ export default function Staff() {
       return;
     }
 
+<<<<<<< Updated upstream
     const hasDuplicate = staff.some((member) => member.email.toLowerCase() === form.email.trim().toLowerCase());
     if (hasDuplicate) {
       setError('Bu e-posta ile kayıtlı personel zaten mevcut.');
       return;
+=======
+    try {
+      await addStaff(form);
+      // Formu temizle
+      setForm({ firstName: '', lastName: '', email: '', phone: '', role: 'STAFF' });
+    } catch (err) {
+      setError(err.message);
+>>>>>>> Stashed changes
     }
 
     setStaff((prev) => [
@@ -98,6 +160,7 @@ export default function Staff() {
     pushToast({ type: 'success', title: 'Personel eklendi', message: `${form.fullName.trim()} kaydı oluşturuldu.` });
   };
 
+<<<<<<< Updated upstream
   const updateMember = (id, patch) => {
     setStaff((prev) => prev.map((member) => (member.id === id ? { ...member, ...patch } : member)));
 
@@ -107,6 +170,27 @@ export default function Staff() {
         title: patch.active ? 'Personel aktif edildi' : 'Personel pasifleştirildi',
         message: 'Yetki durumu güncellendi.',
       });
+=======
+  const updateMember = async (id, patch) => {
+    await updateStaff(id, patch);
+  };
+
+  const handleDeleteClick = (member) => {
+    if (member.role === 'SUPER_ADMIN') {
+        pushToast({ type: 'error', title: 'İşlem Reddedildi', message: 'Sistem Yöneticisi silinemez!' });
+        return;
+    }
+    setMemberToDelete(member);
+  };
+
+  const confirmDelete = async () => {
+    if (!memberToDelete) return;
+    const id = memberToDelete.id;
+    try {
+      await deleteStaff(id);
+    } finally {
+      setMemberToDelete(null);
+>>>>>>> Stashed changes
     }
   };
 
@@ -160,6 +244,7 @@ export default function Staff() {
           </div>
 
           <div className="space-y-3 max-h-[560px] overflow-auto pr-1">
+<<<<<<< Updated upstream
             {filteredStaff.length === 0 && <div className="p-8 text-center rounded-xl border border-dashed border-[var(--border-soft)] text-[var(--text-secondary)]">Filtreye uygun personel bulunamadı.</div>}
             {filteredStaff.map((member) => (
               <article key={member.id} className="rounded-xl border border-[var(--border-soft)] bg-[var(--bg-main)] p-4">
@@ -168,6 +253,19 @@ export default function Staff() {
                     <h3 className="text-lg font-black text-[var(--text-primary)]">{member.fullName}</h3>
                     <p className="text-sm text-[var(--text-secondary)]">{member.email} {member.phone ? `• ${member.phone}` : ''}</p>
                   </div>
+=======
+            {isBootstrapping ? (
+              <div className="p-8 text-center rounded-xl border border-dashed border-[var(--border-soft)] text-[var(--text-secondary)]">
+                Personeller yükleniyor...
+              </div>
+            ) : filteredStaff.length === 0 ? (
+              <div className="p-8 text-center rounded-xl border border-dashed border-[var(--border-soft)] text-[var(--text-secondary)]">
+                Filtreye uygun personel bulunamadı.
+              </div>
+            ) : (
+              filteredStaff.map((member) => {
+                const isSuperAdmin = member.role === 'SUPER_ADMIN';
+>>>>>>> Stashed changes
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full lg:w-auto">
                     <select value={member.role} onChange={(e) => updateMember(member.id, { role: e.target.value })} className="p-2 rounded-lg border border-[var(--border-soft)] bg-white">

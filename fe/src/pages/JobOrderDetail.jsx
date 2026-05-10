@@ -118,9 +118,40 @@ export default function IsEmriDetay() {
                     <h1 className="text-3xl font-black tracking-tight">{job.plate} <span className="text-gray-600 ml-2 text-lg font-medium">/ Servis Detayı</span></h1>
                     <p className="text-gray-400 text-sm mt-1">{job.brand} | {job.customer} | Şikayet: {job.complaint || 'Belirtilmemiş'}</p>
                 </div>
+<<<<<<< Updated upstream
                 <span className={`bg-[var(--bg-main)] text-sm border px-6 py-2 rounded-full font-black ${statusClasses}`}>
                     DURUM: {displayStatus}
                 </span>
+=======
+                <select value={item.status || 'BEKLIYOR'} onChange={(event) => onItemStatusChange(item.id, event.target.value)} className="p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border-soft)] text-xs font-black text-[var(--text-primary)]">
+                  {itemStatuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}
+                </select>
+                <button onClick={() => removeServiceItem(job.id, item.id)} className="text-[var(--danger)] font-bold hover:underline">Sil</button>
+              </div>
+            )) : (
+              <p className="text-gray-500">Henuz is kalemi eklenmedi.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="bg-[var(--bg-card)] p-8 rounded-xl shadow-lg border border-[var(--border-soft)] flex-1 flex flex-col justify-center items-center text-center">
+            <h3 className="text-gray-400 font-bold text-sm uppercase tracking-widest mb-3">Toplam Servis Tutari</h3>
+            <div className="text-5xl font-black text-[var(--accent)] mb-6">{Number(job.total || 0).toLocaleString()} <span className="text-3xl">TL</span></div>
+
+            <div className="grid grid-cols-1 gap-3 w-full">
+
+
+              <select value={job.status} onChange={(event) => setJobStatus(job.id, event.target.value)} className="p-4 rounded-lg bg-[var(--bg-main)] border border-[var(--border-strong)] text-[var(--text-primary)]">
+                <option value="IN_PROGRESS">Islemde</option>
+                <option value="WAITING_PART">Parca Bekliyor</option>
+                <option value="COMPLETED">Tamamlandi</option>
+              </select>
+
+              <button onClick={() => allItemsCompleted && setConfirmComplete(true)} disabled={!allItemsCompleted} className={`px-6 py-4 font-black rounded-xl transition-all uppercase tracking-widest text-lg shadow-lg ${allItemsCompleted ? 'bg-[var(--success)] text-[var(--text-primary)] hover:brightness-110 active:scale-[0.98]' : 'bg-[var(--bg-main)] text-gray-500 border border-[var(--border-soft)] cursor-not-allowed opacity-70'}`}>
+                {allItemsCompleted ? 'Isi Tamamla' : 'Once Tum Kalemleri Tamamla'}
+              </button>
+>>>>>>> Stashed changes
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

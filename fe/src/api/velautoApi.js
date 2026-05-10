@@ -403,6 +403,16 @@ export const api = {
   serviceFormItems: {
     get: (id) => request(`/api/v1/service-form-items/${id}`),
     create: (payload) => request('/api/v1/service-form-items', { method: 'POST', body: payload }),
+<<<<<<< Updated upstream
+=======
+    updateStatus: (id, status) => request(`/api/v1/service-form-items/${id}/status`, { method: 'PATCH', body: { status } }),
+  },
+  staff: {
+    list: () => request('/api/v1/staff'),
+    create: (payload) => request('/api/v1/auth/staff/create', { method: 'POST', body: payload }),
+    update: (id, payload) => request(`/api/v1/staff/${id}`, { method: 'PUT', body: payload }),
+    remove: (id) => request(`/api/v1/staff/${id}`, { method: 'DELETE' }),
+>>>>>>> Stashed changes
   },
   payments: {
     list: (params = '') => request(`/api/v1/payments${params}`),
